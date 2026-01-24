@@ -22,7 +22,7 @@
     "recharts": "^2.10.3"
   },
   "devDependencies": {
-    "eslint": "^8",
+    "eslint": "^9",
     "eslint-config-next": "latest",
     "prisma": "^6.2.1"
   }
