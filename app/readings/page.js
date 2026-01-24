@@ -14,7 +14,7 @@ export default async function ReadingsPage() {
 
             <div className="glass-card" style={{ marginBottom: '2rem' }}>
                 <h2>Neuen Zählerstand eintragen</h2>
-                <form action={addReading} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'end' }}>
+                <form action={addReading} className="responsive-form-grid">
                     <div className="input-group">
                         <label>Datum</label>
                         <input type="date" name="date" className="input-field" required defaultValue={new Date().toISOString().split('T')[0]} />
@@ -39,31 +39,33 @@ export default async function ReadingsPage() {
 
             <div className="glass-card">
                 <h2>Verlauf</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>HT</th>
-                            <th>NT</th>
-                            <th>Kommentar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {readings.map((reading) => (
-                            <tr key={reading.id}>
-                                <td>{reading.date.toLocaleDateString()}</td>
-                                <td>{reading.valueHT} kWh</td>
-                                <td>{reading.valueNT} kWh</td>
-                                <td style={{ color: 'var(--text-muted)' }}>{reading.comment || '-'}</td>
-                            </tr>
-                        ))}
-                        {readings.length === 0 && (
+                <div className="table-wrapper">
+                    <table>
+                        <thead>
                             <tr>
-                                <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Keine Einträge vorhanden</td>
+                                <th>Datum</th>
+                                <th>HT</th>
+                                <th>NT</th>
+                                <th>Kommentar</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {readings.map((reading) => (
+                                <tr key={reading.id}>
+                                    <td>{reading.date.toLocaleDateString()}</td>
+                                    <td>{reading.valueHT} kWh</td>
+                                    <td>{reading.valueNT} kWh</td>
+                                    <td style={{ color: 'var(--text-muted)' }}>{reading.comment || '-'}</td>
+                                </tr>
+                            ))}
+                            {readings.length === 0 && (
+                                <tr>
+                                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Keine Einträge vorhanden</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     )
