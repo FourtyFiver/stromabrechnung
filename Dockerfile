@@ -63,7 +63,7 @@ ENV PORT 3000
 # set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
 
-COPY start.sh ./
+COPY --chown=nextjs:nodejs start.sh ./
 RUN chmod +x start.sh
 
 # Start the app
