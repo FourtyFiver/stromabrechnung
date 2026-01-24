@@ -12,4 +12,6 @@ services:
       - DATABASE_URL=file:/app/prisma/dev.db
       - NEXTAUTH_SECRET=changeme_in_production
       - NEXTAUTH_URL=http://localhost:3000
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
     restart: always
