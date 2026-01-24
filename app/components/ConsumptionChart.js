@@ -17,6 +17,20 @@ export default function ConsumptionChart({ data }) {
                         left: 20,
                     }}
                 >
+                    <defs>
+                        <linearGradient id="colorHT" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorNT" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
                     <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} />
                     <XAxis
                         dataKey="date"
@@ -40,13 +54,13 @@ export default function ConsumptionChart({ data }) {
                         label={{ value: 'Kosten (€)', angle: 90, position: 'insideRight', fill: '#10b981' }}
                     />
                     <Tooltip
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                        contentStyle={{ backgroundColor: 'rgba(30, 41, 59, 0.9)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', backdropFilter: 'blur(4px)' }}
                         itemStyle={{ color: '#f8fafc' }}
                     />
                     <Legend />
-                    <Bar yAxisId="left" dataKey="ht" name="HT Verbrauch" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                    <Bar yAxisId="left" dataKey="nt" name="NT Verbrauch" fill="#a78bfa" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                    <Line yAxisId="right" type="monotone" dataKey="cost" name="Kosten" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} />
+                    <Bar yAxisId="left" dataKey="ht" name="HT Verbrauch" fill="url(#colorHT)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                    <Bar yAxisId="left" dataKey="nt" name="NT Verbrauch" fill="url(#colorNT)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                    <Line yAxisId="right" type="monotone" dataKey="cost" name="Kosten" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 8 }} />
                 </ComposedChart>
             </ResponsiveContainer>
         </div>
