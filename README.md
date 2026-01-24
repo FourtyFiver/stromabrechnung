@@ -41,7 +41,7 @@ Ein einfaches, modernes Portal zur Verwaltung von Stromzählerständen und Koste
 
 3. **Starten**
    ```bash
-   docker-compose up -d --build
+   docker compose up -d --build
    ```
    Das Portal ist nun unter `http://localhost:3000` erreichbar.
 
