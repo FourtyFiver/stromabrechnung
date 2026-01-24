@@ -26,11 +26,18 @@ async function getDashboardData() {
             const deltaNT = curr.valueNT - prev.valueNT
             const cost = (deltaHT * currentPrice.priceHT) + (deltaNT * currentPrice.priceNT)
 
+            // Safeguard against NaN or invalid dates
+            const dateObj = new Date(curr.date)
+            const isValidDate = !isNaN(dateObj.getTime())
+            const formattedDate = isValidDate
+                ? dateObj.toLocaleDateString('de-DE', { month: '2-digit', year: '2-digit' })
+                : 'Invalid Date'
+
             chartData.push({
-                date: new Date(curr.date).toLocaleDateString('de-DE', { month: '2-digit', year: '2-digit' }),
-                ht: parseFloat(deltaHT.toFixed(1)),
-                nt: parseFloat(deltaNT.toFixed(1)),
-                cost: parseFloat(cost.toFixed(2))
+                date: formattedDate,
+                ht: isFinite(deltaHT) ? parseFloat(deltaHT.toFixed(1)) : 0,
+                nt: isFinite(deltaNT) ? parseFloat(deltaNT.toFixed(1)) : 0,
+                cost: isFinite(cost) ? parseFloat(cost.toFixed(2)) : 0
             })
         }
 
