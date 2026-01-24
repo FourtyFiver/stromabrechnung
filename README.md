@@ -1,28 +1,31 @@
 # ⚡ Stromabrechnung Portal
 
-Ein einfaches, modernes Portal zur Verwaltung von Stromzählerständen und Kostenberechnung für Untermieter. Entwickelt mit **Next.js 15**, **Prisma** (SQLite) und **Docker**.
+Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zur Kostenabrechnung. Entwickelt mit **Next.js 15+**, **Recharts**, **Prisma** und **Docker**.
 
-![Dashboard Preview](https://via.placeholder.com/800x400?text=Dashboard+Preview)
+![Dashboard Preview](https://via.placeholder.com/800x400?text=Dashboard+Stromabrechnung)
 
 ## 🚀 Features
 
-- **HT / NT Unterscheidung**: Erfassung und Abrechnung getrennt nach Hochtarif und Niedertarif.
-- **Dynamische Preise**: Pflege historischer Preise (Preisänderungen werden korrekt berücksichtigt).
-- **Dashboard**: Übersicht über aktuelle Kosten und letzten Zählerstand.
-- **Visualisierung**: Grafische Auswertung des Verbrauchs und der Kosten (Balken- & Liniendiagramme).
-- **Premium UI**: Modernes Dark-Mode Design mit Glassmorphism-Effekten (ohne Tailwind, reines CSS).
-- **Docker Ready**: Einfaches Deployment mittels `docker-compose`.
-- **Sicher**: Login-geschützt (NextAuth.js).
+- **HT / NT Unterscheidung**: Getrennte Erfassung von Hochtarif (Tag) und Niedertarif (Nacht).
+- **Interaktive Charts**: Visuelle Auswertung des Verbrauchs und der Kostenverläufe.
+- **Dynamische Preise**: Historische Preisänderungen werden bei der Kostenberechnung berücksichtigt.
+- **Benutzerverwaltung**: Gesicherter Zugriff via Login (NextAuth.js).
+- **Responsive Design**: Modernes UI mit Dark Mode und Glassmorphism-Effekten.
+- **Docker Ready**: Vollständig containerisiert für einfaches Deployment.
 
-## 🛠️ Technologien
+## 🛠️ Tech Stack
 
-- **Frontend/Framework**: Next.js 15 (App Router)
+- **Frontend**: Next.js 16 (App Router), React 19
+- **Styling**: Vanilla CSS (Premium Dark Theme)
 - **Datenbank**: SQLite (via Prisma ORM)
-- **Visualisierung**: Recharts
-- **Auth**: NextAuth.js
-- **Container**: Docker & Docker Compose
+- **Auth**: NextAuth.js v4
+- **Charts**: Recharts
 
 ## 📦 Installation & Start
+
+### Vrequisiten
+- **Docker** & **Docker Compose** (V2 empfohlen)
+- *Oder lokal:* Node.js Version 22 oder höher
 
 ### Option 1: Docker (Empfohlen)
 
@@ -32,47 +35,62 @@ Ein einfaches, modernes Portal zur Verwaltung von Stromzählerständen und Koste
    cd stromabrechnung
    ```
 
-2. **Umgebungsvariablen konfigurieren** (Optional)
-   Erstelle eine `.env` Datei basierend auf `.env.example`:
+2. **Konfiguration**
+   Erstelle eine `.env` Datei (kopiere die Vorlage):
    ```bash
    cp .env.example .env
    ```
-   Passe `ADMIN_USERNAME` und `ADMIN_PASSWORD` an.
+   
+   ⚠️ **WICHTIG bei Passwörtern:**
+   Wenn dein Passwort Sonderzeichen enthält (z.B. `$`, `&`, `#`), setze es in **einfache Anführungszeichen**:
+   ```ini
+   ADMIN_PASSWORD='mein$sicheres#passwort'
+   ```
 
 3. **Starten**
    ```bash
    docker compose up -d --build
    ```
-   Das Portal ist nun unter `http://localhost:3000` erreichbar.
+   Das Portal ist unter `http://localhost:3000` erreichbar.
 
-### Option 2: Lokal (Node.js)
+### Option 2: Lokal (Entwicklung)
 
-1. **Abhängigkeiten installieren**
+1. **Installieren**
    ```bash
    npm install
    ```
 
-2. **Datenbank initialisieren**
+2. **Datenbank Setup**
    ```bash
    npx prisma db push
-   node prisma/seed.js # Erstellt Admin User (admin/admin123)
+   node prisma/seed.js # Erstellt Default-Admin
    ```
 
-3. **Entwicklungsserver starten**
+3. **Starten**
    ```bash
    npm run dev
    ```
 
-## 🔐 Login
+## ❓ Troubleshooting
 
-Standard-Zugangsdaten (wenn nicht in `.env` geändert):
-- **Username**: `admin`
-- **Password**: `admin123`
+### Login funktioniert nicht ("Ungültige Zugangsdaten")
+- Prüfe in den Docker Logs (`docker compose logs -f`), welche Passwort-Länge ankommt.
+- Wenn die Länge kürzer ist als dein Passwort, interpretiert Docker die Sonderzeichen falsch.
+- **Lösung**: Setze das Passwort in der `.env` in einfache Anführungszeichen: `ADMIN_PASSWORD='...'`.
 
-## 📸 Screenshots
+### "Malformed" Fehler im Dashboard
+- Der Chart benötigt mindestens **2 Zählerstände**, um eine Differenz (Verbrauch) zu berechnen.
+- Trage einen weiteren Wert ein, dann erscheint die Grafik.
 
-*(Füge hier Screenshots ein)*
+### Build Fehler (EBADENGINE)
+- Dieses Projekt nutzt Next.js 16 und benötigt **Node.js 20+** (im Dockerfile ist Node 22 bereits konfiguriert).
+
+## 🔐 Standard-Login
+
+Wenn keine `.env` konfiguriert ist, gelten diese Fallbacks (nur für Dev-Umgebung!):
+- **User**: `admin`
+- **Pass**: `admin123`
 
 ## 📄 Lizenz
 
-MIT
+MIT License
