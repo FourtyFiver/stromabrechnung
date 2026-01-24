@@ -1,38 +1,51 @@
 import prisma from "@/lib/db"
 import Link from "next/link"
+import ConsumptionChart from "./components/ConsumptionChart"
 
 async function getDashboardData() {
     const readings = await prisma.reading.findMany({
-        orderBy: { date: 'asc' }, // Oldest to newest for calculation
+        orderBy: { date: 'asc' },
     })
 
     const currentPrice = await prisma.priceConfig.findFirst({
         orderBy: { validFrom: 'desc' }
     })
 
-    // Calculate costs between readings
+    // Calculate costs and prepare chart data
     let totalCost = 0
     let lastPeriodCost = 0
-    let latestReading = readings[readings.length - 1]
-
-    // Simple calculation: just delta * current price for now (since tracking historical prices perfectly is complex without complex logic)
-    // For a robust system, we would need to find the price valid at the time of the reading interval.
+    let chartData = []
 
     if (readings.length >= 2 && currentPrice) {
-        const prev = readings[readings.length - 2]
-        const curr = readings[readings.length - 1]
+        // Loop through all readings to generate chart history
+        for (let i = 1; i < readings.length; i++) {
+            const prev = readings[i - 1]
+            const curr = readings[i]
 
-        const deltaHT = curr.valueHT - prev.valueHT
-        const deltaNT = curr.valueNT - prev.valueNT
+            const deltaHT = curr.valueHT - prev.valueHT
+            const deltaNT = curr.valueNT - prev.valueNT
+            const cost = (deltaHT * currentPrice.priceHT) + (deltaNT * currentPrice.priceNT)
 
-        lastPeriodCost = (deltaHT * currentPrice.priceHT) + (deltaNT * currentPrice.priceNT)
+            chartData.push({
+                date: new Date(curr.date).toLocaleDateString('de-DE', { month: '2-digit', year: '2-digit' }),
+                ht: parseFloat(deltaHT.toFixed(1)),
+                nt: parseFloat(deltaNT.toFixed(1)),
+                cost: parseFloat(cost.toFixed(2))
+            })
+        }
+
+        // Last period for the big simplified stat
+        lastPeriodCost = chartData[chartData.length - 1].cost
     }
+
+    const latestReading = readings[readings.length - 1]
 
     return {
         latestReading,
         readingsCount: readings.length,
         currentPrice,
-        lastPeriodCost
+        lastPeriodCost,
+        chartData
     }
 }
 
@@ -78,6 +91,13 @@ export default async function Home() {
                     )}
                 </div>
             </div>
+
+            {data.chartData && data.chartData.length > 0 && (
+                <div className="glass-card" style={{ marginBottom: '2rem' }}>
+                    <h2>Verbrauch & Kosten Verlauf</h2>
+                    <ConsumptionChart data={data.chartData} />
+                </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                 <div className="glass-card">
