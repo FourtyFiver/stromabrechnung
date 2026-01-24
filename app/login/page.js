@@ -27,8 +27,10 @@ export default function LoginPage() {
             setError("Ungültige Zugangsdaten")
             setLoading(false)
         } else {
-            router.push("/")
+            // Refresh to update server components with new session
             router.refresh()
+            // Navigate to dashboard replacing the history entry
+            router.replace("/")
         }
     }
 
