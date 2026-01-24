@@ -1,6 +1,7 @@
-import prisma from "@/lib/db"
 import Link from "next/link"
 import ConsumptionChart from "./components/ConsumptionChart"
+
+export const dynamic = 'force-dynamic'
 
 async function getDashboardData() {
     const readings = await prisma.reading.findMany({

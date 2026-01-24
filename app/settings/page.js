@@ -1,6 +1,8 @@
 import prisma from "@/lib/db"
 import { addPriceConfig } from "@/app/actions"
 
+export const dynamic = 'force-dynamic'
+
 export default async function SettingsPage() {
     const currentPrice = await prisma.priceConfig.findFirst({
         orderBy: { validFrom: 'desc' }
