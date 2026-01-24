@@ -173,7 +173,7 @@ th {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  align-items: end;
+  /* align-items: end; Removed to prevent overlap issues */
 }
 
 /* Mobile Optimization */
