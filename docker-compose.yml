@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    container_name: stromabrechnung
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./prisma/dev.db:/app/prisma/dev.db
+    environment:
+      - DATABASE_URL=file:/app/prisma/dev.db
+      - NEXTAUTH_SECRET=changeme_in_production
+      - NEXTAUTH_URL=http://localhost:3000
+    restart: always

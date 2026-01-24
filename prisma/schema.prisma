@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id       String @id @default(cuid())
+  username String @unique
+  password String
+}
+
+model PriceConfig {
+  id        String   @id @default(cuid())
+  validFrom DateTime @default(now())
+  priceHT   Float
+  priceNT   Float
+  baseFee   Float    @default(0.0)
+}
+
+model Reading {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  valueHT   Float
+  valueNT   Float
+  comment   String?
+}
