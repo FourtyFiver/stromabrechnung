@@ -9,24 +9,31 @@ async function getDashboardData() {
         orderBy: { date: 'asc' },
     })
 
-    const currentPrice = await prisma.priceConfig.findFirst({
+    const allPrices = await prisma.priceConfig.findMany({
         orderBy: { validFrom: 'desc' }
     })
 
     // Calculate costs and prepare chart data
     let totalCost = 0
     let lastPeriodCost = 0
+    let lastPeriodPriceConfig = null
     let chartData = []
 
-    if (readings.length >= 2 && currentPrice) {
+    if (readings.length >= 2 && allPrices.length > 0) {
         // Loop through all readings to generate chart history
         for (let i = 1; i < readings.length; i++) {
             const prev = readings[i - 1]
             const curr = readings[i]
 
+            // Find the price config that was valid at the time of the reading (or closest before it)
+            // Since allPrices is sorted desc by validFrom, the first one that is <= curr.date is the correct one.
+            const relevantPrice = allPrices.find(p => p.validFrom <= curr.date) || allPrices[allPrices.length - 1] // Fallback to oldest if none found (should cover initial period)
+
+            if (!relevantPrice) continue // Should not happen if prices exist
+
             const deltaHT = curr.valueHT - prev.valueHT
             const deltaNT = curr.valueNT - prev.valueNT
-            const cost = (deltaHT * currentPrice.priceHT) + (deltaNT * currentPrice.priceNT)
+            const cost = (deltaHT * relevantPrice.priceHT) + (deltaNT * relevantPrice.priceNT)
 
             // Safeguard against NaN or invalid dates
             const dateObj = new Date(curr.date)
@@ -39,21 +46,29 @@ async function getDashboardData() {
                 date: formattedDate,
                 ht: isFinite(deltaHT) ? parseFloat(deltaHT.toFixed(1)) : 0,
                 nt: isFinite(deltaNT) ? parseFloat(deltaNT.toFixed(1)) : 0,
-                cost: isFinite(cost) ? parseFloat(cost.toFixed(2)) : 0
+                cost: isFinite(cost) ? parseFloat(cost.toFixed(2)) : 0,
+                priceSource: relevantPrice // Store used price for debug/display if needed
             })
         }
 
         // Last period for the big simplified stat
-        lastPeriodCost = chartData[chartData.length - 1].cost
+        if (chartData.length > 0) {
+            lastPeriodCost = chartData[chartData.length - 1].cost
+            // Store the config used for the last calculation
+            lastPeriodPriceConfig = chartData[chartData.length - 1].priceSource
+        }
     }
 
     const latestReading = readings[readings.length - 1]
+    // Current active price for display "Aktueller Tarif"
+    const currentPrice = allPrices[0]
 
     return {
         latestReading,
         readingsCount: readings.length,
         currentPrice,
         lastPeriodCost,
+        lastPeriodPriceConfig,
         chartData
     }
 }
