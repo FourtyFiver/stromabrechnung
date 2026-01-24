@@ -108,7 +108,7 @@ export default async function Home() {
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            <div className="responsive-grid-2">
                 <div className="glass-card">
                     <h2>Schnellzugriff</h2>
                     <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
