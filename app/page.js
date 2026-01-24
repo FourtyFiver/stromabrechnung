@@ -73,6 +73,8 @@ async function getDashboardData() {
     }
 }
 
+import SendReportButton from "./components/SendReportButton"
+
 export default async function Home() {
     const data = await getDashboardData()
 
@@ -149,7 +151,8 @@ export default async function Home() {
                     <h2>Schnellzugriff</h2>
                     <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
                         <Link href="/readings" className="btn" style={{ textAlign: 'center' }}>+ Neuer Zählerstand</Link>
-                        <Link href="/settings" className="btn" style={{ background: 'transparent', border: '1px solid var(--border)', boxShadow: 'none' }}>Einstellungen bearbeiten</Link>
+                        <SendReportButton />
+                        <Link href="/settings" className="btn" style={{ background: 'transparent', border: '1px solid var(--border)', boxShadow: 'none', textAlign: 'center' }}>Einstellungen bearbeiten</Link>
                     </div>
                 </div>
 
