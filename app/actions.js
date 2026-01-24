@@ -23,22 +23,109 @@ export async function addPriceConfig(formData) {
 }
 
 export async function addReading(formData) {
-    const valueHT = parseFloat(formData.get("valueHT"))
-    const valueNT = parseFloat(formData.get("valueNT"))
-    const dateStr = formData.get("date")
-    const date = dateStr ? new Date(dateStr) : new Date()
-    const comment = formData.get("comment")
+    const session = await getServerSession(authOptions)
+    if (!session) {
+        throw new Error('Not authenticated')
+    }
+
+    const valueHT = parseFloat(formData.get('valueHT'))
+    const valueNT = parseFloat(formData.get('valueNT'))
+    const date = new Date(formData.get('date'))
+    const comment = formData.get('comment')
 
     await prisma.reading.create({
         data: {
+            date,
             valueHT,
             valueNT,
-            date,
             comment
         }
     })
 
-    revalidatePath("/readings")
-    revalidatePath("/")
-    redirect("/readings") // Redirect back to list
+    revalidatePath('/')
+    revalidatePath('/readings')
+    redirect('/readings')
+}
+
+export async function sendTelegramReport() {
+    const session = await getServerSession(authOptions)
+    if (!session) return { success: false, error: 'Nicht eingeloggt' }
+
+    const token = process.env.TELEGRAM_BOT_TOKEN
+    const chatId = process.env.TELEGRAM_CHAT_ID
+
+    if (!token || !chatId) {
+        return { success: false, error: 'Telegram nicht konfiguriert (.env prüfen)' }
+    }
+
+    // 1. Fetch Data
+    const readings = await prisma.reading.findMany({
+        orderBy: { date: 'desc' },
+        take: 2 // We need last 2 to calc diff
+    })
+
+    if (readings.length < 2) {
+        return { success: false, error: 'Zu wenige Zählerstände für einen Report.' }
+    }
+
+    const curr = readings[0]
+    const prev = readings[1]
+
+    // 2. Fetch Pricing
+    // Find price valid for current reading date
+    const allPrices = await prisma.priceConfig.findMany({
+        orderBy: { validFrom: 'desc' }
+    })
+    const relevantPrice = allPrices.find(p => p.validFrom <= curr.date) || allPrices[allPrices.length - 1]
+
+    if (!relevantPrice) return { success: false, error: 'Kein Strompreis gefunden.' }
+
+    // 3. Calculate
+    const diffHT = curr.valueHT - prev.valueHT
+    const diffNT = curr.valueNT - prev.valueNT
+    const cost = (diffHT * relevantPrice.priceHT) + (diffNT * relevantPrice.priceNT)
+    const totalCost = cost.toFixed(2)
+
+    // 4. Format Message
+    const message = `
+⚡ *Stromabrechnung Report* ⚡
+
+📅 *Zeitraum:*
+${prev.date.toLocaleDateString()} ➡️ ${curr.date.toLocaleDateString()}
+
+📊 *Verbrauch:*
+HT: ${diffHT.toFixed(1)} kWh
+NT: ${diffNT.toFixed(1)} kWh
+
+💰 *Kosten:*
+*${totalCost} €*
+_(Basis: ${relevantPrice.priceHT}€/${relevantPrice.priceNT}€)_
+
+Zählerstand neu: ${curr.valueHT}/${curr.valueNT}
+`.trim()
+
+    // 5. Send to Telegram
+    try {
+        const url = `https://api.telegram.org/bot${token}/sendMessage`
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: message,
+                parse_mode: 'Markdown'
+            })
+        })
+
+        const data = await res.json()
+        if (!data.ok) {
+            console.error('Telegram API Error:', data)
+            return { success: false, error: data.description }
+        }
+
+        return { success: true }
+    } catch (e) {
+        console.error('Telegram Fetch Error:', e)
+        return { success: false, error: 'Verbindungsfehler zu Telegram' }
+    }
 }
