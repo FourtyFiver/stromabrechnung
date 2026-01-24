@@ -14,7 +14,7 @@ if [[ "$DATABASE_URL" != "file:"* ]]; then
 fi
 
 # Run migrations (use --yes to strict-mode confirm, suppress 'no YES option' error)
-npx --yes prisma db push
+npx --yes prisma@6 db push
 
 # Start the application
 node server.js
