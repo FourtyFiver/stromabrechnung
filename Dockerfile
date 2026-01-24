@@ -63,5 +63,8 @@ ENV PORT 3000
 # set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
 
+COPY start.sh ./
+RUN chmod +x start.sh
+
 # Start the app
-CMD ["node", "server.js"]
+CMD ["./start.sh"]
