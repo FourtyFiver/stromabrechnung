@@ -102,16 +102,33 @@ export default async function Home() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <div className="stat-label">Aktuelle Kosten (letzter Eintrag)</div>
-                            <div className="stat-value" style={{ color: 'var(--success)' }}>
-                                {data.lastPeriodCost ? data.lastPeriodCost.toFixed(2) + ' €' : '-'}
-                            </div>
+
+                            {data.lastPeriodCost ? (
+                                <div>
+                                    <div className="stat-value" style={{ color: 'var(--success)' }}>
+                                        {data.lastPeriodCost.toFixed(2) + ' €'}
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>(Gesamt)</span>
+                                    </div>
+
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span>Strom:</span>
+                                            <span style={{ fontWeight: 'bold' }}>{(data.lastPeriodCost - data.lastPeriodBaseFee).toFixed(2)} €</span>
+                                        </div>
+                                        {data.lastPeriodBaseFee > 0 && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span>Grundgebühr ({data.lastPeriodMonths} Mon.):</span>
+                                                <span style={{ fontWeight: 'bold' }}>{data.lastPeriodBaseFee.toFixed(2)} €</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="stat-value" style={{ color: 'var(--text-muted)' }}>-</div>
+                            )}
+
                             <div className="stat-label" style={{ marginTop: '0.5rem' }}>
                                 Basiert auf aktuellem Tarif
-                                {data.lastPeriodBaseFee > 0 && (
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                        davon Grundgebühr: {data.lastPeriodBaseFee.toFixed(2)} € ({data.lastPeriodMonths} Monate)
-                                    </div>
-                                )}
                             </div>
                         </div>
                         <div className="icon-bg" style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px' }}>
