@@ -17,15 +17,15 @@ export default async function SettingsPage() {
                 <form action={addPriceConfig}>
                     <div className="input-group">
                         <label>Preis HT (€/kWh)</label>
-                        <input type="number" step="0.01" name="priceHT" className="input-field" required placeholder="0.30" />
+                        <input type="number" step="0.0001" name="priceHT" className="input-field" required placeholder="0.30" />
                     </div>
                     <div className="input-group">
                         <label>Preis NT (€/kWh)</label>
-                        <input type="number" step="0.01" name="priceNT" className="input-field" required placeholder="0.20" />
+                        <input type="number" step="0.0001" name="priceNT" className="input-field" required placeholder="0.20" />
                     </div>
                     <div className="input-group">
                         <label>Grundgebühr (€/Monat)</label>
-                        <input type="number" step="0.01" name="baseFee" className="input-field" placeholder="10.00" />
+                        <input type="number" step="0.0001" name="baseFee" className="input-field" placeholder="10.00" />
                     </div>
                     <button type="submit" className="btn">Speichern</button>
                 </form>
