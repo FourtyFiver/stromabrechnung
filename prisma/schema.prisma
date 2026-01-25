@@ -19,6 +19,7 @@ model PriceConfig {
   priceHT   Float
   priceNT   Float
   baseFee   Float    @default(0.0)
+  baseFeeSplit Float @default(50.0)
 }
 
 model Reading {

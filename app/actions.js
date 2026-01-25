@@ -10,12 +10,14 @@ export async function addPriceConfig(formData) {
     const priceHT = parseFloat(formData.get("priceHT"))
     const priceNT = parseFloat(formData.get("priceNT"))
     const baseFee = parseFloat(formData.get("baseFee")) || 0
+    const baseFeeSplit = parseFloat(formData.get("baseFeeSplit")) || 50
 
     await prisma.priceConfig.create({
         data: {
             priceHT,
             priceNT,
             baseFee,
+            baseFeeSplit,
             validFrom: new Date()
         }
     })
@@ -85,15 +87,27 @@ export async function sendTelegramReport() {
     // 3. Calculate
     const diffHT = curr.valueHT - prev.valueHT
     const diffNT = curr.valueNT - prev.valueNT
-    const cost = (diffHT * relevantPrice.priceHT) + (diffNT * relevantPrice.priceNT)
-    const totalCost = cost.toFixed(2)
+
+    // Calculate time difference in months for base fee
+    const diffTime = Math.abs(curr.date - prev.date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffMonths = diffDays / 30.44; // Average days in month
+
+    // Calculate costs
+    const energyCost = (diffHT * relevantPrice.priceHT) + (diffNT * relevantPrice.priceNT)
+
+    // Calculate Base Fee Share
+    const split = relevantPrice.baseFeeSplit !== undefined ? relevantPrice.baseFeeSplit : 50.0
+    const baseFeeCost = (relevantPrice.baseFee * diffMonths) * (split / 100)
+
+    const totalCost = (energyCost + baseFeeCost).toFixed(2)
 
     // 4. Format Message
     const message = `
 ⚡ *Stromabrechnung Report* ⚡
 
 📅 *Zeitraum:*
-${prev.date.toLocaleDateString()} ➡️ ${curr.date.toLocaleDateString()}
+${prev.date.toLocaleDateString()} ➡️ ${curr.date.toLocaleDateString()} (${diffDays} Tage)
 
 📊 *Verbrauch:*
 HT: ${diffHT.toFixed(1)} kWh
@@ -101,7 +115,8 @@ NT: ${diffNT.toFixed(1)} kWh
 
 💰 *Kosten:*
 *${totalCost} €*
-_(Basis: ${relevantPrice.priceHT}€/${relevantPrice.priceNT}€)_
+_(Arbeit: ${energyCost.toFixed(2)}€ | Grund: ${baseFeeCost.toFixed(2)}€)_
+_(Basis: ${relevantPrice.priceHT}€/${relevantPrice.priceNT}€ | ${relevantPrice.baseFee}€ @ ${split}%)_
 
 Zählerstand neu: ${curr.valueHT}/${curr.valueNT}
 `.trim()

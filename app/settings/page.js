@@ -27,6 +27,10 @@ export default async function SettingsPage() {
                         <label>Grundgebühr (€/Monat)</label>
                         <input type="number" step="0.0001" name="baseFee" className="input-field" placeholder="10.00" />
                     </div>
+                    <div className="input-group">
+                        <label>Grundgebühr Anteil (%)</label>
+                        <input type="number" step="1" name="baseFeeSplit" className="input-field" placeholder="50" defaultValue="50" />
+                    </div>
                     <button type="submit" className="btn">Speichern</button>
                 </form>
             </div>
@@ -45,7 +49,7 @@ export default async function SettingsPage() {
                         </div>
                         <div>
                             <div className="stat-label">Grundgebühr</div>
-                            <div className="stat-value">{currentPrice.baseFee} €</div>
+                            <div className="stat-value">{currentPrice.baseFee} € ({currentPrice.baseFeeSplit}%)</div>
                         </div>
                         <div>
                             <div className="stat-label">Gültig seit</div>
