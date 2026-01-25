@@ -117,7 +117,7 @@ ${prev.date.toLocaleDateString('de-DE')} ➡️ ${curr.date.toLocaleDateString('
 HT: ${diffHT.toFixed(1)} kWh
 NT: ${diffNT.toFixed(1)} kWh
 
-💰 *Kosten:*
+💰 *Zu zahlender Betrag:*
 *${totalCost} €*
 _(Arbeit: ${energyCost.toFixed(2)}€ | Grund: ${baseFeeCost.toFixed(2)}€)_
 _(Basis: ${relevantPrice.priceHT}€/${relevantPrice.priceNT}€ | ${relevantPrice.baseFee}€ @ ${split}%)_
