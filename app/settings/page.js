@@ -31,6 +31,10 @@ export default async function SettingsPage() {
                         <label>Grundgebühr Anteil (%)</label>
                         <input type="number" step="1" name="baseFeeSplit" className="input-field" placeholder="50" defaultValue="50" />
                     </div>
+                    <div className="input-group">
+                        <label>Gültig ab</label>
+                        <input type="date" name="validFrom" className="input-field" required defaultValue={new Date().toISOString().split('T')[0]} />
+                    </div>
                     <button type="submit" className="btn">Speichern</button>
                 </form>
             </div>

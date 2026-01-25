@@ -18,7 +18,7 @@ export async function addPriceConfig(formData) {
             priceNT,
             baseFee,
             baseFeeSplit,
-            validFrom: new Date()
+            validFrom: formData.get("validFrom") ? new Date(formData.get("validFrom")) : new Date()
         }
     })
 
