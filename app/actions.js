@@ -122,7 +122,7 @@ NT: ${diffNT.toFixed(1)} kWh
 _(Arbeit: ${energyCost.toFixed(2)}€ | Grund: ${baseFeeCost.toFixed(2)}€)_
 _(Basis: ${relevantPrice.priceHT}€/${relevantPrice.priceNT}€ | ${relevantPrice.baseFee}€ @ ${split}%)_
 
-Zählerstand neu: ${curr.valueHT}/${curr.valueNT}
+Zählerstand neu: HT ${curr.valueHT} / NT ${curr.valueNT}
 `.trim()
 
     // 5. Send to Telegram
