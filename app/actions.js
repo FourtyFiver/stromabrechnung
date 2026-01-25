@@ -88,17 +88,21 @@ export async function sendTelegramReport() {
     const diffHT = curr.valueHT - prev.valueHT
     const diffNT = curr.valueNT - prev.valueNT
 
-    // Calculate time difference in months for base fee
-    const diffTime = Math.abs(curr.date - prev.date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const diffMonths = diffDays / 30.44; // Average days in month
+    // Calculate time difference for base fee (Month-based)
+    const diffMonths = (curr.date.getFullYear() - prev.date.getFullYear()) * 12 + (curr.date.getMonth() - prev.date.getMonth());
+
+    // Fallback if 0 (same month), maybe user wants 0 or 1?
+    // Requirement says "how many months have passed".
+    // 1. Jan -> 15. Jan = 0 months
+    // 31. Jan -> 1. Feb = 1 month
+    const billingMonths = Math.max(0, diffMonths);
 
     // Calculate costs
     const energyCost = (diffHT * relevantPrice.priceHT) + (diffNT * relevantPrice.priceNT)
 
     // Calculate Base Fee Share
     const split = relevantPrice.baseFeeSplit !== undefined ? relevantPrice.baseFeeSplit : 50.0
-    const baseFeeCost = (relevantPrice.baseFee * diffMonths) * (split / 100)
+    const baseFeeCost = (relevantPrice.baseFee * billingMonths) * (split / 100)
 
     const totalCost = (energyCost + baseFeeCost).toFixed(2)
 
@@ -107,7 +111,7 @@ export async function sendTelegramReport() {
 ⚡ *Stromabrechnung Report* ⚡
 
 📅 *Zeitraum:*
-${prev.date.toLocaleDateString()} ➡️ ${curr.date.toLocaleDateString()} (${diffDays} Tage)
+${prev.date.toLocaleDateString()} ➡️ ${curr.date.toLocaleDateString()} (${billingMonths} Monate)
 
 📊 *Verbrauch:*
 HT: ${diffHT.toFixed(1)} kWh
