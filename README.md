@@ -8,6 +8,8 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
 
 - **HT / NT Unterscheidung**: Getrennte Erfassung von Hochtarif (Tag) und Niedertarif (Nacht).
 - **Interaktive Charts**: Visuelle Auswertung des Verbrauchs und der Kostenverläufe.
+- **Präzise Abrechnung**: Erfassung von Strompreisen mit bis zu 4 Nachkommastellen (z.B. 0.3475 €/kWh).
+- **Flexible Grundgebühr**: Anteilige Berechnung der Grundgebühr auf Monatsbasis (konfigurierbarer Prozentsatz).
 - **Dynamische Preise**: Historische Preisänderungen werden bei der Kostenberechnung berücksichtigt.
 - **Benutzerverwaltung**: Gesicherter Zugriff via Login (NextAuth.js).
 - **Responsive Design**: Modernes UI mit Dark Mode und Glassmorphism-Effekten.
