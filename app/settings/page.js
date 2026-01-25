@@ -53,7 +53,7 @@ export default async function SettingsPage() {
                         </div>
                         <div>
                             <div className="stat-label">Gültig seit</div>
-                            <div className="stat-value" style={{ fontSize: '1.25rem' }}>{currentPrice.validFrom.toLocaleDateString()}</div>
+                            <div className="stat-value" style={{ fontSize: '1.25rem' }}>{currentPrice.validFrom.toLocaleDateString('de-DE')}</div>
                         </div>
                     </div>
                 ) : (

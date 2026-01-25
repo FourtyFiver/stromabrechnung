@@ -52,7 +52,7 @@ export default async function ReadingsPage() {
                         <tbody>
                             {readings.map((reading) => (
                                 <tr key={reading.id}>
-                                    <td>{reading.date.toLocaleDateString()}</td>
+                                    <td>{reading.date.toLocaleDateString('de-DE')}</td>
                                     <td>{reading.valueHT} kWh</td>
                                     <td>{reading.valueNT} kWh</td>
                                     <td style={{ color: 'var(--text-muted)' }}>{reading.comment || '-'}</td>

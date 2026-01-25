@@ -105,7 +105,7 @@ export default async function Home() {
                         <div>
                             <div className="stat-label">Letzter Zählerstand</div>
                             <div className="stat-value">
-                                {data.latestReading ? new Date(data.latestReading.date).toLocaleDateString() : '-'}
+                                {data.latestReading ? new Date(data.latestReading.date).toLocaleDateString('de-DE') : '-'}
                             </div>
                             {data.latestReading && (
                                 <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>

@@ -111,7 +111,7 @@ export async function sendTelegramReport() {
 ⚡ *Stromabrechnung Report* ⚡
 
 📅 *Zeitraum:*
-${prev.date.toLocaleDateString()} ➡️ ${curr.date.toLocaleDateString()} (${billingMonths} Monate)
+${prev.date.toLocaleDateString('de-DE')} ➡️ ${curr.date.toLocaleDateString('de-DE')} (${billingMonths} Monate)
 
 📊 *Verbrauch:*
 HT: ${diffHT.toFixed(1)} kWh
