@@ -87,7 +87,26 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
 ### Build Fehler (EBADENGINE)
 - Dieses Projekt nutzt Next.js 16 und benötigt **Node.js 20+** (im Dockerfile ist Node 22 bereits konfiguriert).
 
-## 🔐 Standard-Login
+## � Telegram Bot Einrichtung
+
+1. **Bot erstellen**:
+   - Suche in Telegram nach `@BotFather`.
+   - Sende `/newbot` und folge den Anweisungen.
+   - Du erhältst einen **API Token** (z.B. `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`).
+
+2. **Chat ID herausfinden**:
+   - Suche in Telegram nach `@userinfobot` (oder ähnlichen Bits).
+   - Starte den Bot und er zeigt dir deine `id` (z.B. `987654321`).
+   - *Alternativ*: Sende deinem neuen Bot eine Nachricht, öffne `https://api.telegram.org/bot<DEIN_TOKEN>/getUpdates` im Browser und suche nach `"chat":{"id":...}`.
+
+3. **Konfigurieren**:
+   - Trage Token und ID in deine `.env` Datei ein:
+     ```ini
+     TELEGRAM_BOT_TOKEN='123456789:ABCdefGHIjklMNOpqrsTUVwxyz'
+     TELEGRAM_CHAT_ID='987654321'
+     ```
+
+## �🔐 Standard-Login
 
 Wenn keine `.env` konfiguriert ist, gelten diese Fallbacks (nur für Dev-Umgebung!):
 - **User**: `admin`
