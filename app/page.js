@@ -33,7 +33,16 @@ async function getDashboardData() {
 
             const deltaHT = curr.valueHT - prev.valueHT
             const deltaNT = curr.valueNT - prev.valueNT
-            const cost = (deltaHT * relevantPrice.priceHT) + (deltaNT * relevantPrice.priceNT)
+
+            // Month-based base fee calculation
+            const diffMonths = (new Date(curr.date).getFullYear() - new Date(prev.date).getFullYear()) * 12 + (new Date(curr.date).getMonth() - new Date(prev.date).getMonth());
+            const billingMonths = Math.max(0, diffMonths);
+
+            const split = relevantPrice.baseFeeSplit !== undefined ? relevantPrice.baseFeeSplit : 50.0
+            const baseFeeCost = (relevantPrice.baseFee * billingMonths) * (split / 100)
+
+            const energyCost = (deltaHT * relevantPrice.priceHT) + (deltaNT * relevantPrice.priceNT)
+            const cost = energyCost + baseFeeCost
 
             // Safeguard against NaN or invalid dates
             const dateObj = new Date(curr.date)
@@ -47,6 +56,8 @@ async function getDashboardData() {
                 ht: isFinite(deltaHT) ? parseFloat(deltaHT.toFixed(1)) : 0,
                 nt: isFinite(deltaNT) ? parseFloat(deltaNT.toFixed(1)) : 0,
                 cost: isFinite(cost) ? parseFloat(cost.toFixed(2)) : 0,
+                baseFeeCost: isFinite(baseFeeCost) ? parseFloat(baseFeeCost.toFixed(2)) : 0,
+                billingMonths: billingMonths,
                 priceSource: relevantPrice // Store used price for debug/display if needed
             })
         }
@@ -56,6 +67,8 @@ async function getDashboardData() {
             lastPeriodCost = chartData[chartData.length - 1].cost
             // Store the config used for the last calculation
             lastPeriodPriceConfig = chartData[chartData.length - 1].priceSource
+            var lastPeriodBaseFee = chartData[chartData.length - 1].baseFeeCost
+            var lastPeriodMonths = chartData[chartData.length - 1].billingMonths
         }
     }
 
@@ -68,6 +81,8 @@ async function getDashboardData() {
         readingsCount: readings.length,
         currentPrice,
         lastPeriodCost,
+        lastPeriodBaseFee: typeof lastPeriodBaseFee !== 'undefined' ? lastPeriodBaseFee : 0,
+        lastPeriodMonths: typeof lastPeriodMonths !== 'undefined' ? lastPeriodMonths : 0,
         lastPeriodPriceConfig,
         chartData
     }
@@ -92,6 +107,11 @@ export default async function Home() {
                             </div>
                             <div className="stat-label" style={{ marginTop: '0.5rem' }}>
                                 Basiert auf aktuellem Tarif
+                                {data.lastPeriodBaseFee > 0 && (
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                        davon Grundgebühr: {data.lastPeriodBaseFee.toFixed(2)} € ({data.lastPeriodMonths} Monate)
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="icon-bg" style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px' }}>
