@@ -27,7 +27,7 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
 
 ## 📦 Installation & Start
 
-### Vrequisiten
+### Voraussetzungen
 - **Docker** & **Docker Compose** (V2 empfohlen)
 - *Oder lokal:* Node.js Version 22 oder höher
 
@@ -89,7 +89,7 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
 ### Build Fehler (EBADENGINE)
 - Dieses Projekt nutzt Next.js 16 und benötigt **Node.js 20+** (im Dockerfile ist Node 22 bereits konfiguriert).
 
-## � Telegram Bot Einrichtung
+## 🤖 Telegram Bot Einrichtung
 
 1. **Bot erstellen**:
    - Suche in Telegram nach `@BotFather`.
@@ -108,7 +108,7 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
      TELEGRAM_CHAT_ID='987654321'
      ```
 
-## �🔐 Standard-Login
+## 🔐 Standard-Login
 
 Wenn keine `.env` konfiguriert ist, gelten diese Fallbacks (nur für Dev-Umgebung!):
 - **User**: `admin`
