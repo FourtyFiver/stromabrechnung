@@ -1,8 +1,6 @@
 name: Gitea Docker Build
 
-on:
-  push:
-    branches: [ "main" ]
+on: [push]
 
 env:
   # ⚠️ CHANGE THIS to your Gitea domain (without https://)
