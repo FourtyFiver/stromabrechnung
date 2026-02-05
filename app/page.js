@@ -1,6 +1,7 @@
 import prisma from "@/lib/db"
 import Link from "next/link"
 import ConsumptionChart from "./components/ConsumptionChart"
+import { calculatePeriodCost } from "@/lib/billing"
 
 export const dynamic = 'force-dynamic'
 
@@ -31,18 +32,11 @@ async function getDashboardData() {
 
             if (!relevantPrice) continue // Should not happen if prices exist
 
-            const deltaHT = curr.valueHT - prev.valueHT
-            const deltaNT = curr.valueNT - prev.valueNT
 
-            // Month-based base fee calculation
-            const diffMonths = (new Date(curr.date).getFullYear() - new Date(prev.date).getFullYear()) * 12 + (new Date(curr.date).getMonth() - new Date(prev.date).getMonth());
-            const billingMonths = Math.max(0, diffMonths);
+            // Use shared billing logic
+            const result = calculatePeriodCost(prev, curr, relevantPrice)
 
-            const split = relevantPrice.baseFeeSplit !== undefined ? relevantPrice.baseFeeSplit : 50.0
-            const baseFeeCost = (relevantPrice.baseFee * billingMonths) * (split / 100)
-
-            const energyCost = (deltaHT * relevantPrice.priceHT) + (deltaNT * relevantPrice.priceNT)
-            const cost = energyCost + baseFeeCost
+            if (!result) continue
 
             // Safeguard against NaN or invalid dates
             const dateObj = new Date(curr.date)
@@ -53,12 +47,12 @@ async function getDashboardData() {
 
             chartData.push({
                 date: formattedDate,
-                ht: isFinite(deltaHT) ? parseFloat(deltaHT.toFixed(1)) : 0,
-                nt: isFinite(deltaNT) ? parseFloat(deltaNT.toFixed(1)) : 0,
-                cost: isFinite(cost) ? parseFloat(cost.toFixed(2)) : 0,
-                baseFeeCost: isFinite(baseFeeCost) ? parseFloat(baseFeeCost.toFixed(2)) : 0,
-                billingMonths: billingMonths,
-                priceSource: relevantPrice // Store used price for debug/display if needed
+                ht: result.diffHT,
+                nt: result.diffNT,
+                cost: result.total,
+                baseFeeCost: result.baseFeeCost,
+                billingMonths: result.billingMonths,
+                priceSource: relevantPrice
             })
         }
 

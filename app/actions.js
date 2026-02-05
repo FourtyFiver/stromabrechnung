@@ -5,12 +5,37 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { calculatePeriodCost } from "@/lib/billing"
+import { z } from "zod"
+
+const PriceConfigSchema = z.object({
+    priceHT: z.coerce.number().min(0),
+    priceNT: z.coerce.number().min(0),
+    baseFee: z.coerce.number().min(0).default(0),
+    baseFeeSplit: z.coerce.number().min(0).max(100).default(50),
+    validFrom: z.coerce.date().default(() => new Date())
+})
 
 export async function addPriceConfig(formData) {
-    const priceHT = parseFloat(formData.get("priceHT"))
-    const priceNT = parseFloat(formData.get("priceNT"))
-    const baseFee = parseFloat(formData.get("baseFee")) || 0
-    const baseFeeSplit = parseFloat(formData.get("baseFeeSplit")) || 50
+    const rawData = {
+        priceHT: formData.get("priceHT"),
+        priceNT: formData.get("priceNT"),
+        baseFee: formData.get("baseFee"),
+        baseFeeSplit: formData.get("baseFeeSplit"),
+        validFrom: formData.get("validFrom") || undefined // undefined triggers default
+    }
+
+    const validation = PriceConfigSchema.safeParse(rawData)
+
+    if (!validation.success) {
+        console.error("Validation failed", validation.error.flatten())
+        // In a real app we might return the errors to the form, 
+        // but for now we basically ignore invalid submits or throw. 
+        // Since this is a server action called by a form, we'll just throw so it doesn't save bad data.
+        throw new Error("Validation failed: " + JSON.stringify(validation.error.flatten().fieldErrors))
+    }
+
+    const { priceHT, priceNT, baseFee, baseFeeSplit, validFrom } = validation.data
 
     await prisma.priceConfig.create({
         data: {
@@ -18,7 +43,7 @@ export async function addPriceConfig(formData) {
             priceNT,
             baseFee,
             baseFeeSplit,
-            validFrom: formData.get("validFrom") ? new Date(formData.get("validFrom")) : new Date()
+            validFrom
         }
     })
 
@@ -84,27 +109,22 @@ export async function sendTelegramReport() {
 
     if (!relevantPrice) return { success: false, error: 'Kein Strompreis gefunden.' }
 
-    // 3. Calculate
-    const diffHT = curr.valueHT - prev.valueHT
-    const diffNT = curr.valueNT - prev.valueNT
 
-    // Calculate time difference for base fee (Month-based)
-    const diffMonths = (curr.date.getFullYear() - prev.date.getFullYear()) * 12 + (curr.date.getMonth() - prev.date.getMonth());
+    // 3. Calculate using shared logic
+    const result = calculatePeriodCost(prev, curr, relevantPrice)
 
-    // Fallback if 0 (same month), maybe user wants 0 or 1?
-    // Requirement says "how many months have passed".
-    // 1. Jan -> 15. Jan = 0 months
-    // 31. Jan -> 1. Feb = 1 month
-    const billingMonths = Math.max(0, diffMonths);
+    if (!result) return { success: false, error: 'Fehler bei der Berechnung.' }
 
-    // Calculate costs
-    const energyCost = (diffHT * relevantPrice.priceHT) + (diffNT * relevantPrice.priceNT)
+    const {
+        total: totalCost,
+        energyCost,
+        baseFeeCost,
+        billingMonths,
+        diffHT,
+        diffNT
+    } = result
 
-    // Calculate Base Fee Share
     const split = relevantPrice.baseFeeSplit !== undefined ? relevantPrice.baseFeeSplit : 50.0
-    const baseFeeCost = (relevantPrice.baseFee * billingMonths) * (split / 100)
-
-    const totalCost = (energyCost + baseFeeCost).toFixed(2)
 
     // 4. Format Message
     const message = `

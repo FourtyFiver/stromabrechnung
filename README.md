@@ -10,6 +10,8 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
 - **Interaktive Charts**: Visuelle Auswertung des Verbrauchs und der Kostenverläufe.
 - **Präzise Abrechnung**: Erfassung von Strompreisen mit bis zu 4 Nachkommastellen (z.B. 0.3475 €/kWh).
 - **Flexible Grundgebühr**: Anteilige Berechnung der Grundgebühr auf Monatsbasis (konfigurierbarer Prozentsatz).
+- **Rückwirkende Änderungen**: Preisänderungen können für vergangene Zeiträume eingetragen werden.
+- **Detaillierte Kosten**: Transparente Aufteilung in Arbeits- und Grundpreis im Dashboard und Telegram-Report.
 - **Dynamische Preise**: Historische Preisänderungen werden bei der Kostenberechnung berücksichtigt.
 - **Benutzerverwaltung**: Gesicherter Zugriff via Login (NextAuth.js).
 - **Responsive Design**: Modernes UI mit Dark Mode und Glassmorphism-Effekten.
