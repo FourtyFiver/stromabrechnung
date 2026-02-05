@@ -1,5 +1,6 @@
 import prisma from "@/lib/db"
 import ReadingsForm from "./ReadingsForm"
+import DeleteReadingButton from "./DeleteReadingButton"
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,7 @@ export default async function ReadingsPage() {
                                 <th>HT</th>
                                 <th>NT</th>
                                 <th>Kommentar</th>
+                                <th>Aktionen</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -36,11 +38,14 @@ export default async function ReadingsPage() {
                                     <td>{reading.valueHT} kWh</td>
                                     <td>{reading.valueNT} kWh</td>
                                     <td style={{ color: 'var(--text-muted)' }}>{reading.comment || '-'}</td>
+                                    <td>
+                                        <DeleteReadingButton id={reading.id} />
+                                    </td>
                                 </tr>
                             ))}
                             {readings.length === 0 && (
                                 <tr>
-                                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Keine Einträge vorhanden</td>
+                                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Keine Einträge vorhanden</td>
                                 </tr>
                             )}
                         </tbody>

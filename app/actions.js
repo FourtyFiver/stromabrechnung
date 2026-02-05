@@ -78,6 +78,26 @@ export async function addReading(formData) {
     return { success: true }
 }
 
+export async function deleteReading(id) {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+        return { success: false, error: 'Nicht authentifiziert' }
+    }
+
+    try {
+        await prisma.reading.delete({
+            where: { id }
+        })
+
+        revalidatePath('/')
+        revalidatePath('/readings')
+        return { success: true }
+    } catch (e) {
+        console.error("Delete error:", e)
+        return { success: false, error: 'Fehler beim Löschen' }
+    }
+}
+
 export async function sendTelegramReport() {
     const session = await getServerSession(authOptions)
     if (!session) return { success: false, error: 'Nicht eingeloggt' }
