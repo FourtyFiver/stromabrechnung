@@ -15,7 +15,7 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
 - **Dynamische Preise**: Historische Preisänderungen werden bei der Kostenberechnung berücksichtigt.
 - **Benutzerverwaltung**: Gesicherter Zugriff via Login (NextAuth.js).
 - **Responsive Design**: Modernes UI mit Dark Mode und Glassmorphism-Effekten.
-- **Docker Ready**: Vollständig containerisiert für einfaches Deployment.
+- **Docker Ready**: CI/CD Pipeline via GitHub Actions (GHCR Integration).
 
 ## 🛠️ Tech Stack
 
@@ -29,33 +29,37 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
 
 ### Voraussetzungen
 - **Docker** & **Docker Compose** (V2 empfohlen)
-- *Oder lokal:* Node.js Version 22 oder höher
+- *Oder lokal für Entwicklung:* Node.js Version 22 oder höher
 
-### Option 1: Docker (Empfohlen)
+### Option 1: Docker (Produktions-Setup)
 
-1. **Repository klonen**
-   ```bash
-   git clone https://github.com/FourtyFiver/stromabrechnung.git
-   cd stromabrechnung
-   ```
+Dies ist die empfohlene Methode für die Installation auf deinem Server.
 
-2. **Konfiguration**
-   Erstelle eine `.env` Datei (kopiere die Vorlage):
-   ```bash
-   cp .env.example .env
-   ```
-   
-   ⚠️ **WICHTIG bei Passwörtern:**
-   Wenn dein Passwort Sonderzeichen enthält (z.B. `$`, `&`, `#`), setze es in **einfache Anführungszeichen**:
-   ```ini
-   ADMIN_PASSWORD='mein$sicheres#passwort'
-   ```
+1.  **Repository klonen**
+    ```bash
+    git clone https://github.com/FourtyFiver/stromabrechnung.git
+    cd stromabrechnung
+    ```
 
-3. **Starten**
-   ```bash
-   docker compose up -d --build
-   ```
-   Das Portal ist unter `http://localhost:3000` erreichbar.
+2.  **Konfiguration**
+    Erstelle eine `.env` Datei (kopiere die Vorlage):
+    ```bash
+    cp .env.example .env
+    ```
+    
+    ⚠️ **WICHTIG bei Passwörtern:**
+    Wenn dein Passwort Sonderzeichen enthält (z.B. `$`, `&`, `#`), setze es in **einfache Anführungszeichen**:
+    ```ini
+    ADMIN_PASSWORD='mein$sicheres#passwort'
+    ```
+
+3.  **Starten (Pull from Registry)**
+    Startet den Container mit dem automatisch gebauten Image von GitHub (GHCR):
+    ```bash
+    docker compose pull       # Zieht das aktuellste Image
+    docker compose up -d      # Startet den Container neu
+    ```
+    Das Portal ist unter `http://localhost:3000` erreichbar.
 
 ### Option 2: Lokal (Entwicklung)
 
