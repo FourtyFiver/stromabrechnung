@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { sendTelegramReport } from '../actions'
+import { toast } from 'sonner'
 
 export default function SendReportButton() {
     const [status, setStatus] = useState('idle') // idle, loading, success, error
@@ -14,15 +15,15 @@ export default function SendReportButton() {
             const result = await sendTelegramReport()
             if (result.success) {
                 setStatus('success')
-                alert('Bericht erfolgreich gesendet! 📤')
+                toast.success('Bericht erfolgreich gesendet! 📤')
                 setTimeout(() => setStatus('idle'), 3000)
             } else {
                 setStatus('error')
-                alert('Fehler beim Senden: ' + result.error)
+                toast.error('Fehler beim Senden: ' + result.error)
             }
         } catch (e) {
             setStatus('error')
-            alert('Ein unerwarteter Fehler ist aufgetreten.')
+            toast.error('Ein unerwarteter Fehler ist aufgetreten.')
         }
     }
 

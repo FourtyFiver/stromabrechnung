@@ -37,6 +37,7 @@ export async function addPriceConfig(formData) {
 
     const { priceHT, priceNT, baseFee, baseFeeSplit, validFrom } = validation.data
 
+
     await prisma.priceConfig.create({
         data: {
             priceHT,
@@ -49,12 +50,13 @@ export async function addPriceConfig(formData) {
 
     revalidatePath("/settings")
     revalidatePath("/")
+    return { success: true }
 }
 
 export async function addReading(formData) {
     const session = await getServerSession(authOptions)
     if (!session) {
-        throw new Error('Not authenticated')
+        return { success: false, error: 'Nicht authentifiziert' }
     }
 
     const valueHT = parseFloat(formData.get('valueHT'))
@@ -73,7 +75,7 @@ export async function addReading(formData) {
 
     revalidatePath('/')
     revalidatePath('/readings')
-    redirect('/readings')
+    return { success: true }
 }
 
 export async function sendTelegramReport() {

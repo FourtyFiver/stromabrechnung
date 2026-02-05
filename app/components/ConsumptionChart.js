@@ -54,8 +54,36 @@ export default function ConsumptionChart({ data }) {
                         label={{ value: 'Kosten (€)', angle: 90, position: 'insideRight', fill: '#10b981' }}
                     />
                     <Tooltip
-                        contentStyle={{ backgroundColor: 'rgba(30, 41, 59, 0.9)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', backdropFilter: 'blur(4px)' }}
-                        itemStyle={{ color: '#f8fafc' }}
+                        content={(props) => {
+                            if (props.active && props.payload && props.payload.length) {
+                                const data = props.payload[0].payload;
+                                return (
+                                    <div className="glass-card" style={{ padding: '1rem', minWidth: '200px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                        <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+                                            {data.date}
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#3b82f6' }}>
+                                            <span>HT:</span>
+                                            <span>{data.ht} kWh</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#a78bfa' }}>
+                                            <span>NT:</span>
+                                            <span>{data.nt} kWh</span>
+                                        </div>
+                                        <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: '#10b981' }}>
+                                                <span>Kosten:</span>
+                                                <span>{data.cost.toFixed(2)} €</span>
+                                            </div>
+                                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                                                Grundgebühr: {data.baseFeeCost.toFixed(2)} € ({data.billingMonths} Mon.)
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        }}
                     />
                     <Legend />
                     <Bar yAxisId="left" dataKey="ht" name="HT Verbrauch" fill="url(#colorHT)" radius={[4, 4, 0, 0]} maxBarSize={50} />

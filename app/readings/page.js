@@ -1,5 +1,6 @@
 import prisma from "@/lib/db"
-import { addReading } from "@/app/actions"
+import prisma from "@/lib/db"
+import ReadingsForm from "./ReadingsForm"
 
 export const dynamic = 'force-dynamic'
 
@@ -14,27 +15,7 @@ export default async function ReadingsPage() {
 
             <div className="glass-card" style={{ marginBottom: '2rem' }}>
                 <h2>Neuen Zählerstand eintragen</h2>
-                <form action={addReading} className="responsive-form-grid">
-                    <div className="input-group">
-                        <label>Datum</label>
-                        <input type="date" name="date" className="input-field" required defaultValue={new Date().toISOString().split('T')[0]} />
-                    </div>
-                    <div className="input-group">
-                        <label>HT Zählerstand (kWh)</label>
-                        <input type="number" step="0.1" name="valueHT" className="input-field" required />
-                    </div>
-                    <div className="input-group">
-                        <label>NT Zählerstand (kWh)</label>
-                        <input type="number" step="0.1" name="valueNT" className="input-field" required />
-                    </div>
-                    <div className="input-group">
-                        <label>Kommentar</label>
-                        <input type="text" name="comment" className="input-field" />
-                    </div>
-                    <div className="input-group">
-                        <button type="submit" className="btn" style={{ width: '100%' }}>Eintragen</button>
-                    </div>
-                </form>
+                <ReadingsForm />
             </div>
 
             <div className="glass-card">

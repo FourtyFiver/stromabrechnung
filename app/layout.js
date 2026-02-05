@@ -1,5 +1,6 @@
 import './globals.css';
 import Link from 'next/link';
+import { Toaster } from 'sonner';
 
 export const metadata = {
     title: 'Stromabrechnung',
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
                         <Link href="/api/auth/signout" style={{ color: '#ef4444' }}>Logout</Link>
                     </header>
                     <main>{children}</main>
+                    <Toaster position="top-right" richColors />
                 </div>
             </body>
         </html>
