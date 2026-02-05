@@ -1,5 +1,4 @@
 import prisma from "@/lib/db"
-import prisma from "@/lib/db"
 import SettingsForm from "./SettingsForm"
 
 export const dynamic = 'force-dynamic'
