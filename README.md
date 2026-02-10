@@ -19,7 +19,7 @@ Ein modernes, webbasiertes Portal zur Verwaltung von Stromzählerständen und zu
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 16 (App Router), React 19
+- **Frontend**: Next.js (App Router), React 19
 - **Styling**: Vanilla CSS (Premium Dark Theme)
 - **Datenbank**: SQLite (via Prisma ORM)
 - **Auth**: NextAuth.js v4

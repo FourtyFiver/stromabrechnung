@@ -17,6 +17,11 @@ const PriceConfigSchema = z.object({
 })
 
 export async function addPriceConfig(formData) {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+        return { success: false, error: 'Nicht authentifiziert' }
+    }
+
     const rawData = {
         priceHT: formData.get("priceHT"),
         priceNT: formData.get("priceNT"),

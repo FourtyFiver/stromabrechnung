@@ -1,6 +1,7 @@
 import prisma from "@/lib/db"
 import Link from "next/link"
 import ConsumptionChart from "./components/ConsumptionChart"
+import SendReportButton from "./components/SendReportButton"
 import { calculatePeriodCost } from "@/lib/billing"
 
 export const dynamic = 'force-dynamic'
@@ -18,6 +19,8 @@ async function getDashboardData() {
     let totalCost = 0
     let lastPeriodCost = 0
     let lastPeriodPriceConfig = null
+    let lastPeriodBaseFee = 0
+    let lastPeriodMonths = 0
     let chartData = []
 
     if (readings.length >= 2 && allPrices.length > 0) {
@@ -59,10 +62,9 @@ async function getDashboardData() {
         // Last period for the big simplified stat
         if (chartData.length > 0) {
             lastPeriodCost = chartData[chartData.length - 1].cost
-            // Store the config used for the last calculation
             lastPeriodPriceConfig = chartData[chartData.length - 1].priceSource
-            var lastPeriodBaseFee = chartData[chartData.length - 1].baseFeeCost
-            var lastPeriodMonths = chartData[chartData.length - 1].billingMonths
+            lastPeriodBaseFee = chartData[chartData.length - 1].baseFeeCost
+            lastPeriodMonths = chartData[chartData.length - 1].billingMonths
         }
     }
 
@@ -75,14 +77,14 @@ async function getDashboardData() {
         readingsCount: readings.length,
         currentPrice,
         lastPeriodCost,
-        lastPeriodBaseFee: typeof lastPeriodBaseFee !== 'undefined' ? lastPeriodBaseFee : 0,
-        lastPeriodMonths: typeof lastPeriodMonths !== 'undefined' ? lastPeriodMonths : 0,
+        lastPeriodBaseFee,
+        lastPeriodMonths,
         lastPeriodPriceConfig,
         chartData
     }
 }
 
-import SendReportButton from "./components/SendReportButton"
+
 
 export default async function Home() {
     const data = await getDashboardData()

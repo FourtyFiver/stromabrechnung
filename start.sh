@@ -1,11 +1,4 @@
-# Debug Env Vars (Safe: printing lengths only)
-echo "DEBUG: ADMIN_USERNAME length: ${#ADMIN_USERNAME}"
-echo "DEBUG: ADMIN_PASSWORD length: ${#ADMIN_PASSWORD}"
-echo "DEBUG: DATABASE_URL value: $DATABASE_URL"
-
-# Debug Filesystem permissions where DB should be
-echo "DEBUG: Listing /app/prisma permissions:"
-ls -la /app/prisma
+#!/bin/sh
 
 # Ensure DATABASE_URL starts with file: for SQLite (Prisma requirement)
 if [[ "$DATABASE_URL" != "file:"* ]]; then
