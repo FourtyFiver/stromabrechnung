@@ -185,6 +185,7 @@ export default async function Home() {
                     <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
                         <Link href="/readings" className="btn" style={{ textAlign: 'center' }}>+ Neuer Zählerstand</Link>
                         <SendReportButton />
+                        <Link href="/billing-history" className="btn" style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', textAlign: 'center' }}>💰 Abrechnungs-Historie</Link>
                         <Link href="/settings" className="btn" style={{ background: 'transparent', border: '1px solid var(--border)', boxShadow: 'none', textAlign: 'center' }}>Einstellungen bearbeiten</Link>
                     </div>
                 </div>

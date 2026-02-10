@@ -23,9 +23,34 @@ model PriceConfig {
 }
 
 model Reading {
-  id        String   @id @default(cuid())
-  date      DateTime @default(now())
-  valueHT   Float
-  valueNT   Float
-  comment   String?
+  id            String    @id @default(cuid())
+  date          DateTime  @default(now())
+  valueHT       Float
+  valueNT       Float
+  comment       String?
+  billedAt      DateTime?
+  billPeriodId  String?
+  billingNote   String?
+
+  @@index([billedAt])
+}
+
+model BillPeriod {
+  id             String   @id @default(cuid())
+  fromDate       DateTime
+  toDate         DateTime
+  fromReadingId  String
+  toReadingId    String
+  totalCost      Float
+  energyCost     Float
+  baseFeeCost    Float
+  billingMonths  Int
+  diffHT         Float
+  diffNT         Float
+  sentAt         DateTime @default(now())
+  sentVia        String   @default("telegram")
+  pdfGenerated   Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([sentAt(sort: Desc)])
 }

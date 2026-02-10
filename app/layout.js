@@ -17,6 +17,7 @@ export default function RootLayout({ children }) {
                         <Link href="/">Dashboard</Link>
                         <Link href="/readings">Zählerstände</Link>
                         <Link href="/settings">Einstellungen</Link>
+                        <Link href="/billing-history">Abrechnungen</Link>
                         <Link href="/api/auth/signout" style={{ color: '#ef4444' }}>Logout</Link>
                     </header>
                     <main>{children}</main>
