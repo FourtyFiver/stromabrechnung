@@ -27,9 +27,7 @@ export default function LoginPage() {
             setError("Ungültige Zugangsdaten")
             setLoading(false)
         } else {
-            // Refresh to update server components with new session
             router.refresh()
-            // Navigate to dashboard replacing the history entry
             router.replace("/")
         }
     }
@@ -42,28 +40,33 @@ export default function LoginPage() {
             minHeight: '80vh'
         }}>
             <div className="glass-card" style={{ width: '100%', maxWidth: '400px' }}>
-                <h1 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '2rem' }}>Login</h1>
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>⚡</div>
+                    <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>StromPortal</h1>
+                    <p style={{ color: 'var(--text-dim)', fontSize: '0.875rem', margin: 0 }}>Melden Sie sich an, um fortzufahren</p>
+                </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="input-group">
                         <label>Benutzername</label>
-                        <input type="text" name="username" className="input-field" required placeholder="admin" />
+                        <input type="text" name="username" className="input-field" required placeholder="admin" autoComplete="username" />
                     </div>
 
                     <div className="input-group">
                         <label>Passwort</label>
-                        <input type="password" name="password" className="input-field" required placeholder="•••••••" />
+                        <input type="password" name="password" className="input-field" required placeholder="•••••••" autoComplete="current-password" />
                     </div>
 
                     {error && (
                         <div style={{
-                            color: '#ef4444',
-                            fontSize: '0.9rem',
+                            color: 'var(--danger)',
+                            fontSize: '0.85rem',
                             marginBottom: '1rem',
                             textAlign: 'center',
-                            padding: '0.5rem',
+                            padding: '0.6rem 1rem',
                             background: 'rgba(239, 68, 68, 0.1)',
-                            borderRadius: '8px'
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: 'var(--radius-sm)'
                         }}>
                             {error}
                         </div>
@@ -72,10 +75,15 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         className="btn"
-                        style={{ width: '100%' }}
+                        style={{ width: '100%', padding: '0.8rem' }}
                         disabled={loading}
                     >
-                        {loading ? 'Anmelden...' : 'Einloggen'}
+                        {loading ? (
+                            <>
+                                <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                                Anmelden...
+                            </>
+                        ) : 'Einloggen'}
                     </button>
                 </form>
             </div>

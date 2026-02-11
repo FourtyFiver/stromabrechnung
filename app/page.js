@@ -15,38 +15,31 @@ async function getDashboardData() {
         orderBy: { validFrom: 'desc' }
     })
 
+    // Count unbilled readings
+    const unbilledCount = readings.filter(r => !r.billedAt).length
+
     // Calculate costs and prepare chart data
-    let totalCost = 0
     let lastPeriodCost = 0
-    let lastPeriodPriceConfig = null
     let lastPeriodBaseFee = 0
     let lastPeriodMonths = 0
     let chartData = []
 
     if (readings.length >= 2 && allPrices.length > 0) {
-        // Loop through all readings to generate chart history
         for (let i = 1; i < readings.length; i++) {
             const prev = readings[i - 1]
             const curr = readings[i]
 
-            // Find the price config that was valid at the time of the reading (or closest before it)
-            // Since allPrices is sorted desc by validFrom, the first one that is <= curr.date is the correct one.
-            const relevantPrice = allPrices.find(p => p.validFrom <= curr.date) || allPrices[allPrices.length - 1] // Fallback to oldest if none found (should cover initial period)
+            const relevantPrice = allPrices.find(p => p.validFrom <= curr.date) || allPrices[allPrices.length - 1]
+            if (!relevantPrice) continue
 
-            if (!relevantPrice) continue // Should not happen if prices exist
-
-
-            // Use shared billing logic
             const result = calculatePeriodCost(prev, curr, relevantPrice)
-
             if (!result) continue
 
-            // Safeguard against NaN or invalid dates
             const dateObj = new Date(curr.date)
             const isValidDate = !isNaN(dateObj.getTime())
             const formattedDate = isValidDate
                 ? dateObj.toLocaleDateString('de-DE', { month: '2-digit', year: '2-digit' })
-                : 'Invalid Date'
+                : '?'
 
             chartData.push({
                 date: formattedDate,
@@ -59,32 +52,37 @@ async function getDashboardData() {
             })
         }
 
-        // Last period for the big simplified stat
         if (chartData.length > 0) {
             lastPeriodCost = chartData[chartData.length - 1].cost
-            lastPeriodPriceConfig = chartData[chartData.length - 1].priceSource
             lastPeriodBaseFee = chartData[chartData.length - 1].baseFeeCost
             lastPeriodMonths = chartData[chartData.length - 1].billingMonths
         }
     }
 
     const latestReading = readings[readings.length - 1]
-    // Current active price for display "Aktueller Tarif"
     const currentPrice = allPrices[0]
+
+    // Total consumption
+    let totalHT = 0
+    let totalNT = 0
+    if (readings.length >= 2) {
+        totalHT = readings[readings.length - 1].valueHT - readings[0].valueHT
+        totalNT = readings[readings.length - 1].valueNT - readings[0].valueNT
+    }
 
     return {
         latestReading,
         readingsCount: readings.length,
+        unbilledCount,
         currentPrice,
         lastPeriodCost,
         lastPeriodBaseFee,
         lastPeriodMonths,
-        lastPeriodPriceConfig,
+        totalHT,
+        totalNT,
         chartData
     }
 }
-
-
 
 export default async function Home() {
     const data = await getDashboardData()
@@ -94,108 +92,141 @@ export default async function Home() {
             <h1>Dashboard</h1>
 
             <div className="stats-grid">
+                {/* Kosten Card */}
                 <div className="glass-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <div className="stat-label">Aktuelle Kosten (letzter Eintrag)</div>
-
+                        <div style={{ flex: 1 }}>
+                            <div className="stat-label">Letzte Abrechnung</div>
                             {data.lastPeriodCost ? (
                                 <div>
-                                    <div className="stat-value" style={{ color: 'var(--success)' }}>
-                                        {data.lastPeriodCost.toFixed(2) + ' €'}
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>(Gesamt)</span>
+                                    <div className="stat-value" style={{ color: 'var(--success)', marginTop: '0.5rem' }}>
+                                        {data.lastPeriodCost.toFixed(2)} €
                                     </div>
-
-                                    <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <span>Strom:</span>
-                                            <span style={{ fontWeight: 'bold' }}>{(data.lastPeriodCost - data.lastPeriodBaseFee).toFixed(2)} €</span>
-                                        </div>
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                        <span>Strom: {(data.lastPeriodCost - data.lastPeriodBaseFee).toFixed(2)} €</span>
                                         {data.lastPeriodBaseFee > 0 && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span>Grundgebühr ({data.lastPeriodMonths} Mon.):</span>
-                                                <span style={{ fontWeight: 'bold' }}>{data.lastPeriodBaseFee.toFixed(2)} €</span>
-                                            </div>
+                                            <span>Grundgebühr: {data.lastPeriodBaseFee.toFixed(2)} € ({data.lastPeriodMonths} Mon.)</span>
                                         )}
                                     </div>
                                 </div>
                             ) : (
-                                <div className="stat-value" style={{ color: 'var(--text-muted)' }}>-</div>
+                                <div className="stat-value" style={{ color: 'var(--text-dim)', marginTop: '0.5rem' }}>—</div>
                             )}
-
-                            <div className="stat-label" style={{ marginTop: '0.5rem' }}>
-                                Basiert auf aktuellem Tarif
-                            </div>
                         </div>
-                        <div className="icon-bg" style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px' }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></svg>
+                        <div className="icon-bg" style={{ background: 'rgba(16, 185, 129, 0.12)' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></svg>
                         </div>
                     </div>
                 </div>
 
+                {/* Zählerstand Card */}
                 <div className="glass-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <div className="stat-label">Letzter Zählerstand</div>
-                            <div className="stat-value">
-                                {data.latestReading ? new Date(data.latestReading.date).toLocaleDateString('de-DE') : '-'}
+                            <div className="stat-value" style={{ marginTop: '0.5rem' }}>
+                                {data.latestReading ? new Date(data.latestReading.date).toLocaleDateString('de-DE') : '—'}
                             </div>
                             {data.latestReading && (
-                                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                                    HT: {data.latestReading.valueHT} | NT: {data.latestReading.valueNT}
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                    HT: {data.latestReading.valueHT.toLocaleString('de-DE')} · NT: {data.latestReading.valueNT.toLocaleString('de-DE')}
                                 </div>
                             )}
                         </div>
-                        <div className="icon-bg" style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '10px', borderRadius: '12px' }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+                        <div className="icon-bg" style={{ background: 'rgba(59, 130, 246, 0.12)' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
                         </div>
                     </div>
                 </div>
 
+                {/* Tarif Card */}
                 <div className="glass-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <div className="stat-label">Aktueller Tarif</div>
                             {data.currentPrice ? (
-                                <div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>HT: {data.currentPrice.priceHT} €</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>NT: {data.currentPrice.priceNT} €</div>
+                                <div style={{ marginTop: '0.5rem' }}>
+                                    <div style={{ display: 'flex', gap: '1.5rem' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '0.15rem' }}>HT</div>
+                                            <div style={{ fontSize: '1.35rem', fontWeight: 800 }}>{data.currentPrice.priceHT} €</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '0.15rem' }}>NT</div>
+                                            <div style={{ fontSize: '1.35rem', fontWeight: 800 }}>{data.currentPrice.priceNT} €</div>
+                                        </div>
+                                    </div>
+                                    {data.currentPrice.baseFee > 0 && (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                                            Grundgebühr: {data.currentPrice.baseFee} €/Monat ({data.currentPrice.baseFeeSplit}%)
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
-                                <div style={{ color: 'var(--text-muted)' }}>Nicht konfiguriert</div>
+                                <div style={{ color: 'var(--text-dim)', marginTop: '0.5rem' }}>Nicht konfiguriert</div>
                             )}
                         </div>
-                        <div className="icon-bg" style={{ background: 'rgba(167, 139, 250, 0.2)', padding: '10px', borderRadius: '12px' }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                        <div className="icon-bg" style={{ background: 'rgba(139, 92, 246, 0.12)' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* Chart */}
             {data.chartData && data.chartData.length > 0 && (
-                <div className="glass-card" style={{ marginBottom: '2rem' }}>
-                    <h2>Verbrauch & Kosten Verlauf</h2>
+                <div className="glass-card" style={{ marginBottom: '1.25rem' }}>
+                    <h2>📈 Verbrauch & Kosten</h2>
                     <ConsumptionChart data={data.chartData} />
                 </div>
             )}
 
+            {/* Quick Actions */}
             <div className="responsive-grid-2">
                 <div className="glass-card">
                     <h2>Schnellzugriff</h2>
-                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-                        <Link href="/readings" className="btn" style={{ textAlign: 'center' }}>+ Neuer Zählerstand</Link>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
+                        <Link href="/readings" className="btn" style={{ textAlign: 'center' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                            Neuer Zählerstand
+                        </Link>
                         <SendReportButton />
-                        <Link href="/billing-history" className="btn" style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', textAlign: 'center' }}>💰 Abrechnungs-Historie</Link>
-                        <Link href="/settings" className="btn" style={{ background: 'transparent', border: '1px solid var(--border)', boxShadow: 'none', textAlign: 'center' }}>Einstellungen bearbeiten</Link>
+                        <Link href="/billing-history" className="btn" style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2), 0 0 12px rgba(139, 92, 246, 0.3)' }}>
+                            💰 Abrechnungs-Historie
+                        </Link>
+                        <Link href="/settings" className="btn btn-outline" style={{ textAlign: 'center' }}>
+                            Einstellungen
+                        </Link>
                     </div>
                 </div>
 
                 <div className="glass-card">
-                    <h2>Info</h2>
-                    <p style={{ color: 'var(--text-muted)' }}>
-                        Willkommen im Stromabrechnungs-Portal.
-                        Bitte konfigurieren Sie zuerst die Preise unter "Einstellungen", bevor Sie Zählerstände eintragen.
-                    </p>
+                    <h2>Status</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Zählerstände</span>
+                            <span className="badge badge-info">{data.readingsCount}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Offene Abrechnung</span>
+                            <span className={`badge ${data.unbilledCount > 0 ? 'badge-warning' : 'badge-success'}`}>
+                                {data.unbilledCount > 0 ? `${data.unbilledCount} offen` : 'Alle abgerechnet'}
+                            </span>
+                        </div>
+                        {data.totalHT > 0 && (
+                            <>
+                                <hr className="divider" />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Gesamtverbrauch HT</span>
+                                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{data.totalHT.toFixed(0)} kWh</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Gesamtverbrauch NT</span>
+                                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{data.totalNT.toFixed(0)} kWh</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

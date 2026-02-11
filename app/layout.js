@@ -10,18 +10,23 @@ export const metadata = {
 export default function RootLayout({ children }) {
     return (
         <html lang="de">
+            <head>
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+            </head>
             <body>
                 <div className="container">
-                    <header className="nav glass-card">
-                        <h2 style={{ margin: 0, marginRight: 'auto', fontSize: '1.25rem' }}>⚡ StromPortal</h2>
+                    <header className="nav">
+                        <h2>⚡ StromPortal</h2>
                         <Link href="/">Dashboard</Link>
                         <Link href="/readings">Zählerstände</Link>
-                        <Link href="/settings">Einstellungen</Link>
                         <Link href="/billing-history">Abrechnungen</Link>
-                        <Link href="/api/auth/signout" style={{ color: '#ef4444' }}>Logout</Link>
+                        <Link href="/settings">Einstellungen</Link>
+                        <Link href="/api/auth/signout" style={{ color: 'var(--danger)' }}>Logout</Link>
                     </header>
                     <main>{children}</main>
-                    <Toaster position="top-right" richColors />
+                    <Toaster position="top-right" richColors theme="dark" />
                 </div>
             </body>
         </html>
