@@ -1,51 +1,31 @@
-# ⚡ Stromabrechnung Portal
+# ⚡ StromApp
 
-Ein modernes, webbasiertes Portal zur Verwaltung von Zählerständen und zur Kostenabrechnung.
-**Tech Stack:** Next.js 15+ (React 19, App Router), SQLite (Prisma), NextAuth v4, Recharts, Vanilla CSS (Dark Theme/Glassmorphism), Docker.
+Ein übersichtliches, webbasiertes Portal zur Verwaltung von Zählerständen und Stromkosten.
 
 ## 🚀 Features
-- **Tarife & Abrechnung:** Getrennte Erfassung von Hoch- (HT) und Niedertarif (NT), bis zu 4 Nachkommastellen bei Preisen, anteilige Grundgebühr.
-- **Dynamik:** Rückwirkende Preisänderungen und historische Preisverläufe werden bei der Kostenberechnung berücksichtigt.
-- **Visualisierung & Reports:** Interaktive Recharts-Grafiken und transparente Kostenaufschlüsselung im Dashboard & per Telegram-Bot.
-- **Security & Hosting:** Gesicherter Login (NextAuth), Responsive UI, Docker-Ready (inkl. GHCR CI/CD-Pipeline).
+- **Präzise Abrechnung:** Getrennte Erfassung von HT/NT, Berücksichtigung von Grundgebühren und Preisänderungen.
+- **Visualisierung:** Interaktives Dashboard für den Verbrauchs- und Kostenüberblick.
+- **Telegram Reports:** Automatische Benachrichtigungen über Verbräuche direkt aufs Handy.
 
-## 📦 Installation & Start
+## 📦 Installation (Docker)
 
-### Option 1: Docker (Empfohlen für Produktion)
-Voraussetzungen: Docker & Docker Compose (V2)
+Der schnellste und empfohlene Weg, um die App zu starten (Docker & Docker Compose vorausgesetzt):
 
 ```bash
 git clone https://github.com/FourtyFiver/stromabrechnung.git && cd stromabrechnung
 cp .env.example .env
-docker compose pull && docker compose up -d
+docker compose up -d
 ```
-*Tipp: Enthält dein `ADMIN_PASSWORD` in der `.env` Sonderzeichen, setze es in einfache Anführungszeichen (z.B. `'mein$passwort'`).*
-*(Das Portal ist danach unter `http://localhost:3000` erreichbar)*
+*Die App ist danach unter `http://localhost:3000` erreichbar.*
 
-### Option 2: Lokal (Für Entwicklung)
-Voraussetzungen: Node.js 22+
-
-```bash
-npm install
-npx prisma db push && node prisma/seed.js # Erstellt Default-Admin
-npm run dev
+## 🤖 Telegram Bot (Optional)
+Damit du Reports direkt über Telegram erhältst, trage deine Bot-Daten in die `.env` ein:
+```ini
+TELEGRAM_BOT_TOKEN='dein_token'
+TELEGRAM_CHAT_ID='deine_id'
 ```
 
-*Hinweis: Wenn keine `.env` konfiguriert ist, lauten die Entwicklungs-Zugangsdaten `admin` / `admin123`.*
-
-## 🤖 Telegram Bot Einrichtung
-1. Sende `/newbot` an **@BotFather** in Telegram, um deinen API Token zu erhalten.
-2. Schreibe **@userinfobot** an, um deine Chat ID herauszufinden.
-3. Trage beide Werte in deine `.env` Datei ein:
-   ```ini
-   TELEGRAM_BOT_TOKEN='dein_token'
-   TELEGRAM_CHAT_ID='deine_id'
-   ```
-
-## ❓ Troubleshooting
-- **Login fehlgeschlagen:** Docker-Logs prüfen (`docker compose logs -f`). Bei abgeschnittenem Passwort dieses in der `.env` mit `''` umschließen.
-- **"Malformed" Fehler im Dashboard:** Der Chart benötigt mindestens **2 Zählerstände** zur Verbrauchsberechnung.
-- **Build Fehler (EBADENGINE):** Node.js 20+ erforderlich (Im Dockerfile ist Node 22 konfiguriert).
-
-## 📄 Lizenz
-MIT License
+## ❓ Troubleshooting & Hinweise
+- **Start-Login:** Die voreingestellten Zugangsdaten lauten `admin` / `admin123` (falls nicht in der `.env` überschrieben).
+- **Passwort mit Sonderzeichen:** Umschließe Passwörter in der `.env` mit einfachen Anführungszeichen (z.B. `'p@sswort'`).
+- **Dashboard leer?** Für die Verbrauchs- und Kostenberechnung werden immer mindestens **2 Zählerstände** benötigt.
