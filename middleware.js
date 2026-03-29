@@ -6,4 +6,4 @@ export default withAuth({
     },
 })
 
-export const config = { matcher: ["/", "/readings", "/settings"] }
+export const config = { matcher: ["/", "/readings", "/settings", "/billing-history"] }

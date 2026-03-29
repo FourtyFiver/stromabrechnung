@@ -23,7 +23,7 @@ export default function RootLayout({ children }) {
                         <Link href="/readings">Zählerstände</Link>
                         <Link href="/billing-history">Abrechnungen</Link>
                         <Link href="/settings">Einstellungen</Link>
-                        <Link href="/api/auth/signout" style={{ color: 'var(--danger)' }}>Logout</Link>
+                        <Link href="/api/auth/signout?callbackUrl=/login" style={{ color: 'var(--danger)' }}>Logout</Link>
                     </header>
                     <main>{children}</main>
                     <Toaster position="top-right" richColors theme="dark" />
