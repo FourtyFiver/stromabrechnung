@@ -1,5 +1,5 @@
 import './globals.css';
-import Link from 'next/link';
+import Navigation from './components/Navigation';
 import { Toaster } from 'sonner';
 
 export const metadata = {
@@ -17,14 +17,7 @@ export default function RootLayout({ children }) {
             </head>
             <body>
                 <div className="container">
-                    <header className="nav">
-                        <h2>⚡ StromPortal</h2>
-                        <Link href="/">Dashboard</Link>
-                        <Link href="/readings">Zählerstände</Link>
-                        <Link href="/billing-history">Abrechnungen</Link>
-                        <Link href="/settings">Einstellungen</Link>
-                        <Link href="/api/auth/signout?callbackUrl=/login" style={{ color: 'var(--danger)' }}>Logout</Link>
-                    </header>
+                    <Navigation />
                     <main>{children}</main>
                     <Toaster position="top-right" richColors theme="dark" />
                 </div>
