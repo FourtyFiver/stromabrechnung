@@ -42,7 +42,7 @@ export default function LoginPage() {
             <div className="glass-card" style={{ width: '100%', maxWidth: '400px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>⚡</div>
-                    <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>StromPortal</h1>
+                    <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>StromApp</h1>
                     <p style={{ color: 'var(--text-dim)', fontSize: '0.875rem', margin: 0 }}>Melden Sie sich an, um fortzufahren</p>
                 </div>
 

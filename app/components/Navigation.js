@@ -12,7 +12,7 @@ export default function Navigation() {
 
     return (
         <header className="nav">
-            <h2>⚡ StromPortal</h2>
+            <h2>⚡ StromApp</h2>
             <Link href="/">Dashboard</Link>
             <Link href="/readings">Zählerstände</Link>
             <Link href="/billing-history">Abrechnungen</Link>
