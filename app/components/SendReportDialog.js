@@ -85,26 +85,29 @@ export default function SendReportDialog({ open, onClose }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            padding: 'max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left))',
             zIndex: 1000,
             animation: 'fadeInUp 0.2s ease-out'
         }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
             <div style={{
                 maxWidth: '480px',
-                width: '90%',
-                maxHeight: '80vh',
-                overflowY: 'auto',
+                width: 'min(100%, 480px)',
+                maxHeight: 'min(88vh, 720px)',
                 background: 'rgba(17, 24, 39, 0.95)',
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
                 border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-xl)',
-                padding: '1.75rem',
+                padding: '1.25rem',
                 boxShadow: '0 24px 64px rgba(0, 0, 0, 0.4)',
                 opacity: 1,
-                animation: 'fadeInUp 0.3s ease-out'
+                animation: 'fadeInUp 0.3s ease-out',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
             }}>
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1rem', padding: '0.5rem 0.5rem 0 0.5rem', flexShrink: 0 }}>
                     <h2 style={{ margin: 0, fontSize: '1.15rem' }}>📊 Report erstellen</h2>
                     <button onClick={onClose} style={{
                         background: 'rgba(255,255,255,0.05)',
@@ -119,19 +122,20 @@ export default function SendReportDialog({ open, onClose }) {
                     }}>✕</button>
                 </div>
 
-                {loading ? (
-                    <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
-                        <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.75rem' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                        <div>Lade verfügbare Perioden...</div>
-                    </div>
-                ) : periodsData?.message ? (
-                    <div className="empty-state" style={{ padding: '2rem 1rem' }}>
-                        <div className="empty-icon">📋</div>
-                        <p>{periodsData.message}</p>
-                    </div>
-                ) : (
-                    <>
-                        <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ overflowY: 'auto', padding: '0.25rem 0.5rem 0', minHeight: 0, flex: 1 }}>
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                            <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.75rem' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                            <div>Lade verfügbare Perioden...</div>
+                        </div>
+                    ) : periodsData?.message ? (
+                        <div className="empty-state" style={{ padding: '2rem 1rem' }}>
+                            <div className="empty-icon">📋</div>
+                            <p>{periodsData.message}</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{ marginBottom: '1.25rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.6rem', color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Abrechnungszeitraum
                             </label>
@@ -215,53 +219,64 @@ export default function SendReportDialog({ open, onClose }) {
                             )}
                         </div>
 
-                        {getSelectedFromTo() && getSelectedFromTo().fromId && getSelectedFromTo().toId && (
-                            <div style={{
-                                padding: '0.75rem 1rem',
-                                background: 'rgba(16, 185, 129, 0.08)',
-                                border: '1px solid rgba(16, 185, 129, 0.2)',
-                                borderRadius: 'var(--radius-sm)',
-                                marginBottom: '1rem',
-                                fontSize: '0.8rem'
-                            }}>
-                                <div style={{ fontWeight: 600, color: 'var(--success)', marginBottom: '0.15rem' }}>✅ Bereit zum Senden</div>
-                                <div style={{ color: 'var(--text-muted)' }}>Report wird an Telegram gesendet & Zählerstände als abgerechnet markiert.</div>
-                            </div>
-                        )}
+                            {getSelectedFromTo() && getSelectedFromTo().fromId && getSelectedFromTo().toId && (
+                                <div style={{
+                                    padding: '0.75rem 1rem',
+                                    background: 'rgba(16, 185, 129, 0.08)',
+                                    border: '1px solid rgba(16, 185, 129, 0.2)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    marginBottom: '1rem',
+                                    fontSize: '0.8rem'
+                                }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--success)', marginBottom: '0.15rem' }}>✅ Bereit zum Senden</div>
+                                    <div style={{ color: 'var(--text-muted)' }}>Report wird an Telegram gesendet & Zählerstände als abgerechnet markiert.</div>
+                                </div>
+                            )}
 
-                        {error && (
-                            <div style={{
-                                padding: '0.6rem 0.85rem',
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                borderRadius: 'var(--radius-sm)',
-                                color: 'var(--danger)',
-                                marginBottom: '1rem',
-                                fontSize: '0.8rem'
-                            }}>
-                                ❌ {error}
-                            </div>
-                        )}
+                            {error && (
+                                <div style={{
+                                    padding: '0.6rem 0.85rem',
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    color: 'var(--danger)',
+                                    marginBottom: '1rem',
+                                    fontSize: '0.8rem'
+                                }}>
+                                    ❌ {error}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
 
-                        <div style={{ display: 'flex', gap: '0.6rem' }}>
-                            <button
-                                onClick={handleSend}
-                                className="btn"
-                                disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
-                                style={{ flex: 1 }}
-                            >
-                                {sending ? (
-                                    <>
-                                        <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                                        Sende...
-                                    </>
-                                ) : '📤 Report senden'}
-                            </button>
-                            <button onClick={onClose} className="btn btn-outline">
-                                Abbrechen
-                            </button>
-                        </div>
-                    </>
+                {!loading && !periodsData?.message && (
+                    <div style={{
+                        display: 'flex',
+                        gap: '0.6rem',
+                        padding: '1rem 0.5rem 0.5rem',
+                        borderTop: '1px solid var(--border)',
+                        background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.2), rgba(17, 24, 39, 0.96))',
+                        flexShrink: 0,
+                        flexWrap: 'wrap'
+                    }}>
+                        <button
+                            onClick={handleSend}
+                            className="btn"
+                            disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
+                            style={{ flex: '1 1 220px' }}
+                        >
+                            {sending ? (
+                                <>
+                                    <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                                    Sende...
+                                </>
+                            ) : '📤 Report senden'}
+                        </button>
+                        <button onClick={onClose} className="btn btn-outline" style={{ flex: '1 1 140px' }}>
+                            Abbrechen
+                        </button>
+                    </div>
                 )}
             </div>
         </div>
