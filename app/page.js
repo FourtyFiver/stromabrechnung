@@ -11,6 +11,10 @@ async function getDashboardData() {
         orderBy: { date: 'asc' },
     })
 
+    const latestBillPeriod = await prisma.billPeriod.findFirst({
+        orderBy: { sentAt: 'desc' }
+    })
+
     const allPrices = await prisma.priceConfig.findMany({
         orderBy: { validFrom: 'desc' }
     })
@@ -19,9 +23,9 @@ async function getDashboardData() {
     const unbilledCount = readings.filter(r => !r.billedAt).length
 
     // Calculate costs and prepare chart data
-    let lastPeriodCost = 0
-    let lastPeriodBaseFee = 0
-    let lastPeriodMonths = 0
+    let lastPeriodCost = latestBillPeriod?.totalCost || 0
+    let lastPeriodBaseFee = latestBillPeriod?.baseFeeCost || 0
+    let lastPeriodMonths = latestBillPeriod?.billingMonths || 0
     let chartData = []
 
     if (readings.length >= 2 && allPrices.length > 0) {
@@ -52,11 +56,6 @@ async function getDashboardData() {
             })
         }
 
-        if (chartData.length > 0) {
-            lastPeriodCost = chartData[chartData.length - 1].cost
-            lastPeriodBaseFee = chartData[chartData.length - 1].baseFeeCost
-            lastPeriodMonths = chartData[chartData.length - 1].billingMonths
-        }
     }
 
     const latestReading = readings[readings.length - 1]
