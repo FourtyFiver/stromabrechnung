@@ -3,6 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+const navItems = [
+    { href: '/', label: 'Dashboard' },
+    { href: '/readings', label: 'Zählerstände' },
+    { href: '/billing-history', label: 'Abrechnungen' },
+    { href: '/settings', label: 'Einstellungen' },
+];
+
 export default function Navigation() {
     const pathname = usePathname();
 
@@ -13,11 +20,21 @@ export default function Navigation() {
     return (
         <header className="nav">
             <h2>⚡ StromApp</h2>
-            <Link href="/">Dashboard</Link>
-            <Link href="/readings">Zählerstände</Link>
-            <Link href="/billing-history">Abrechnungen</Link>
-            <Link href="/settings">Einstellungen</Link>
-            <Link href="/api/auth/signout?callbackUrl=/login" style={{ color: 'var(--danger)' }}>Logout</Link>
+            {navItems.map(item => {
+                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                return (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`nav-link${isActive ? ' active' : ''}`}
+                    >
+                        {item.label}
+                    </Link>
+                );
+            })}
+            <Link href="/api/auth/signout?callbackUrl=/login" className="nav-link nav-logout">
+                Logout
+            </Link>
         </header>
     );
 }
