@@ -1,6 +1,5 @@
 import prisma from "@/lib/db"
 import Link from "next/link"
-import PdfDownloadButton from "../components/PdfDownloadButton"
 
 export const dynamic = 'force-dynamic'
 
@@ -11,22 +10,6 @@ export default async function BillingHistoryPage() {
 
     // Summary stats
     const totalBilled = history.reduce((sum, bp) => sum + bp.totalCost, 0)
-
-    // Serialize dates for client components
-    const serializedHistory = history.map(bp => ({
-        id: bp.id,
-        fromDate: bp.fromDate.toISOString(),
-        toDate: bp.toDate.toISOString(),
-        totalCost: bp.totalCost,
-        energyCost: bp.energyCost,
-        baseFeeCost: bp.baseFeeCost,
-        billingMonths: bp.billingMonths,
-        diffHT: bp.diffHT,
-        diffNT: bp.diffNT,
-        sentAt: bp.sentAt.toISOString(),
-        sentVia: bp.sentVia,
-        pdfGenerated: bp.pdfGenerated
-    }))
 
     return (
         <div>
@@ -71,7 +54,6 @@ export default async function BillingHistoryPage() {
                                     <th>Kosten</th>
                                     <th>Gesendet</th>
                                     <th>Via</th>
-                                    <th style={{ width: '50px' }}></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -104,9 +86,6 @@ export default async function BillingHistoryPage() {
                                             <span className={`badge ${bp.sentVia === 'telegram' ? 'badge-info' : 'badge-purple'}`}>
                                                 {bp.sentVia === 'telegram' ? '📱 Telegram' : bp.sentVia}
                                             </span>
-                                        </td>
-                                        <td>
-                                            <PdfDownloadButton billPeriod={serializedHistory.find(s => s.id === bp.id)} />
                                         </td>
                                     </tr>
                                 ))}
