@@ -4,6 +4,21 @@ import { signIn } from "next-auth/react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
+function getLoginErrorMessage(errorCode) {
+    switch (errorCode) {
+        case "CredentialsSignin":
+            return "Ungültige Zugangsdaten"
+        case "Configuration":
+            return "Authentifizierung ist falsch konfiguriert. Bitte Server-Logs prüfen."
+        case "AccessDenied":
+            return "Anmeldung wurde verweigert"
+        case "CallbackRouteError":
+            return "Anmeldung ist serverseitig fehlgeschlagen. Bitte Server-Logs prüfen."
+        default:
+            return errorCode ? `Anmeldung fehlgeschlagen: ${errorCode}` : "Anmeldung fehlgeschlagen"
+    }
+}
+
 export default function LoginPage() {
     const router = useRouter()
     const [error, setError] = useState("")
@@ -23,8 +38,14 @@ export default function LoginPage() {
             redirect: false,
         })
 
+        if (!res) {
+            setError("Keine Antwort vom Auth-Server erhalten")
+            setLoading(false)
+            return
+        }
+
         if (res.error) {
-            setError("Ungültige Zugangsdaten")
+            setError(getLoginErrorMessage(res.error))
             setLoading(false)
         } else {
             router.refresh()
