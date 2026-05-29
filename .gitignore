@@ -16,9 +16,6 @@
 # misc
 .DS_Store
 *.pem
-.claude/
-!/.claude.md
-!/CLAUDE.md
 
 # debug
 npm-debug.log*
