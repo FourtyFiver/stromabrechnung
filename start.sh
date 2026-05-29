@@ -6,11 +6,12 @@ if [ "${DATABASE_URL#file:}" = "$DATABASE_URL" ]; then
 fi
 
 # Security warning for default credentials
-ADMIN_PASS="${ADMIN_PASSWORD:-}"
-if [ -z "$ADMIN_PASS" ]; then
+ADMIN_USER="${ADMIN_USERNAME:-admin}"
+ADMIN_PASS="${ADMIN_PASSWORD:-admin123}"
+if [ -z "${ADMIN_PASSWORD:-}" ]; then
     echo "⚠️  WARNING: ADMIN_PASSWORD is not set!"
-    echo "   Login via environment variables is disabled."
-    echo "   Set ADMIN_USERNAME and ADMIN_PASSWORD in .env to enable admin login."
+    echo "   Falling back to default credentials: '$ADMIN_USER' / '$ADMIN_PASS'"
+    echo "   Set ADMIN_USERNAME and ADMIN_PASSWORD in .env to override them."
     echo ""
 elif [ "$ADMIN_PASS" = "admin123" ] || [ "$ADMIN_PASS" = "secure_password_please_change" ] || [ "$ADMIN_PASS" = "password" ] || [ "$ADMIN_PASS" = "admin" ]; then
     echo "⚠️  SECURITY WARNING: ADMIN_PASSWORD is set to a known default value: '$ADMIN_PASS'"
