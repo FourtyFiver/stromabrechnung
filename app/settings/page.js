@@ -4,9 +4,14 @@ import SettingsForm from "./SettingsForm"
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
-    const currentPrice = await prisma.priceConfig.findFirst({
-        orderBy: { validFrom: 'desc' }
-    })
+    const [currentPrice, allPrices] = await Promise.all([
+        prisma.priceConfig.findFirst({
+            orderBy: { validFrom: 'desc' }
+        }),
+        prisma.priceConfig.findMany({
+            orderBy: { validFrom: 'desc' }
+        })
+    ])
 
     return (
         <div>
@@ -58,6 +63,43 @@ export default async function SettingsPage() {
                     )}
                 </div>
             </div>
+
+            {/* Price History */}
+            {allPrices.length > 1 && (
+                <div className="glass-card" style={{ marginTop: '1.25rem' }}>
+                    <h2>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'text-bottom', marginRight: '0.35rem' }}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                        Tarif-Historie
+                    </h2>
+                    <div className="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Gültig ab</th>
+                                    <th>HT (€/kWh)</th>
+                                    <th>NT (€/kWh)</th>
+                                    <th>Grundgebühr</th>
+                                    <th>Anteil</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {allPrices.map((price, index) => (
+                                    <tr key={price.id} style={index === 0 ? { background: 'rgba(59, 130, 246, 0.06)' } : undefined}>
+                                        <td style={{ fontWeight: index === 0 ? 600 : 400 }}>
+                                            {price.validFrom.toLocaleDateString('de-DE')}
+                                            {index === 0 && <span className="badge badge-info" style={{ marginLeft: '0.5rem', fontSize: '0.65rem' }}>Aktuell</span>}
+                                        </td>
+                                        <td>{price.priceHT.toFixed(4)}</td>
+                                        <td>{price.priceNT.toFixed(4)}</td>
+                                        <td>{price.baseFee.toFixed(2)} €</td>
+                                        <td>{price.baseFeeSplit}%</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

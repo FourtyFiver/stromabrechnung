@@ -3,21 +3,17 @@ import Link from "next/link"
 import ConsumptionChart from "./components/ConsumptionChart"
 import SendReportButton from "./components/SendReportButton"
 import { calculatePeriodCost } from "@/lib/billing"
+import { findRelevantPrice } from "@/lib/pricing"
 
 export const dynamic = 'force-dynamic'
 
 async function getDashboardData() {
-    const readings = await prisma.reading.findMany({
-        orderBy: { date: 'asc' },
-    })
-
-    const latestBillPeriod = await prisma.billPeriod.findFirst({
-        orderBy: { sentAt: 'desc' }
-    })
-
-    const allPrices = await prisma.priceConfig.findMany({
-        orderBy: { validFrom: 'desc' }
-    })
+    // Run all 3 queries in parallel instead of sequentially
+    const [readings, latestBillPeriod, allPrices] = await Promise.all([
+        prisma.reading.findMany({ orderBy: { date: 'asc' } }),
+        prisma.billPeriod.findFirst({ orderBy: { sentAt: 'desc' } }),
+        prisma.priceConfig.findMany({ orderBy: { validFrom: 'desc' } })
+    ])
 
     // Count unbilled readings
     const unbilledCount = readings.filter(r => !r.billedAt).length
@@ -33,7 +29,7 @@ async function getDashboardData() {
             const prev = readings[i - 1]
             const curr = readings[i]
 
-            const relevantPrice = allPrices.find(p => p.validFrom <= curr.date) || allPrices[allPrices.length - 1]
+            const relevantPrice = findRelevantPrice(allPrices, curr.date)
             if (!relevantPrice) continue
 
             const result = calculatePeriodCost(prev, curr, relevantPrice)
@@ -61,6 +57,29 @@ async function getDashboardData() {
     const latestReading = readings[readings.length - 1]
     const currentPrice = allPrices[0]
 
+    // Calculate estimated costs for the open (unbilled) period
+    let openPeriodEstimate = null
+    const unbilledReadings = readings.filter(r => !r.billedAt)
+    const lastBilledReading = [...readings].reverse().find(r => r.billedAt !== null)
+    if (unbilledReadings.length > 0 && lastBilledReading && allPrices.length > 0) {
+        const newestUnbilled = unbilledReadings[unbilledReadings.length - 1]
+        const fromReading = lastBilledReading
+        // Make sure the newest unbilled is after the last billed reading
+        if (newestUnbilled.date > fromReading.date) {
+            const priceForPeriod = findRelevantPrice(allPrices, newestUnbilled.date)
+            if (priceForPeriod) {
+                const result = calculatePeriodCost(fromReading, newestUnbilled, priceForPeriod)
+                if (result) {
+                    openPeriodEstimate = {
+                        ...result,
+                        fromDate: fromReading.date,
+                        toDate: newestUnbilled.date
+                    }
+                }
+            }
+        }
+    }
+
     // Total consumption
     let totalHT = 0
     let totalNT = 0
@@ -77,6 +96,7 @@ async function getDashboardData() {
         lastPeriodCost,
         lastPeriodBaseFee,
         lastPeriodMonths,
+        openPeriodEstimate,
         totalHT,
         totalNT,
         chartData
@@ -171,6 +191,35 @@ export default async function Home() {
                     </div>
                 </div>
             </div>
+
+            {/* Open Period Estimate */}
+            {data.openPeriodEstimate && (
+                <div className="glass-card" style={{ marginBottom: '1.25rem', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                            <div className="stat-label">Aktuelle Kosten (offen)</div>
+                            <div style={{ marginTop: '0.5rem' }}>
+                                <div className="stat-value" style={{ color: 'var(--primary-light)' }}>
+                                    {data.openPeriodEstimate.total.toFixed(2)} €
+                                </div>
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                    <span>Strom: {data.openPeriodEstimate.energyCost.toFixed(2)} €</span>
+                                    {data.openPeriodEstimate.baseFeeCost > 0 && (
+                                        <span>Grundgebühr: {data.openPeriodEstimate.baseFeeCost.toFixed(2)} € ({data.openPeriodEstimate.billingMonths} Mon.)</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
+                                {new Date(data.openPeriodEstimate.fromDate).toLocaleDateString('de-DE')} → {new Date(data.openPeriodEstimate.toDate).toLocaleDateString('de-DE')}
+                                {' · '}HT: {data.openPeriodEstimate.diffHT.toFixed(1)} kWh · NT: {data.openPeriodEstimate.diffNT.toFixed(1)} kWh
+                            </div>
+                        </div>
+                        <div className="icon-bg" style={{ background: 'rgba(59, 130, 246, 0.12)' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M2 12h20" /><path d="M5 12h14M12 5v14" /><circle cx="12" cy="12" r="10" /></svg>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Chart */}
             {data.chartData && data.chartData.length > 0 && (
