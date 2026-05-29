@@ -18,22 +18,15 @@ elif [ "$ADMIN_PASS" = "admin123" ] || [ "$ADMIN_PASS" = "secure_password_please
     echo ""
 fi
 
-# Run schema push (safe for SQLite, idempotent)
-npx --yes prisma@6 db push
+# Run schema push without regenerating the Prisma client at runtime.
+npx --yes prisma@6 db push --skip-generate
 
-# One-time migration: mark existing readings as billed
-MIGRATION_FLAG="/app/data/.migration-mark-billed-done"
-if [ ! -f "$MIGRATION_FLAG" ]; then
-    echo "Running billing migration..."
-    if node prisma/migrations/mark-existing-billed.js; then
-        mkdir -p /app/data
-        touch "$MIGRATION_FLAG"
-        echo "Billing migration complete."
-    else
-        echo "WARNING: Billing migration failed. Will retry on next start."
-    fi
+# This migration is already idempotent, so run it directly without a marker file.
+echo "Running billing migration..."
+if node prisma/migrations/mark-existing-billed.js; then
+    echo "Billing migration complete."
 else
-    echo "Billing migration already done, skipping."
+    echo "WARNING: Billing migration failed. Will retry on next start."
 fi
 
 # Start the application
