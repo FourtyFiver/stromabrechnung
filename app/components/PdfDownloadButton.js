@@ -1,9 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { generateBillingPDF } from '@/lib/pdf-generator'
 import { markPdfGenerated } from '@/app/actions'
 import { toast } from 'sonner'
+
+function getFilenameFromDisposition(contentDisposition, fallbackName) {
+    if (!contentDisposition) {
+        return fallbackName
+    }
+
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+    if (utf8Match?.[1]) {
+        return decodeURIComponent(utf8Match[1])
+    }
+
+    const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i)
+    return filenameMatch?.[1] || fallbackName
+}
 
 export default function PdfDownloadButton({ billPeriod }) {
     const [loading, setLoading] = useState(false)
@@ -12,15 +25,28 @@ export default function PdfDownloadButton({ billPeriod }) {
     async function handleDownload() {
         setLoading(true)
         try {
-            const dataUri = await generateBillingPDF(billPeriod)
+            const response = await fetch(`/api/billing-history/${billPeriod.id}/pdf`, {
+                method: 'GET',
+                cache: 'no-store'
+            })
+
+            if (!response.ok) {
+                throw new Error('PDF download failed')
+            }
+
+            const pdfBlob = await response.blob()
+            const objectUrl = URL.createObjectURL(pdfBlob)
+            const fallbackName = `stromabrechnung_${new Date(billPeriod.fromDate).toLocaleDateString('de-DE').replace(/\./g, '-')}_${new Date(billPeriod.toDate).toLocaleDateString('de-DE').replace(/\./g, '-')}.pdf`
+            const filename = getFilenameFromDisposition(response.headers.get('content-disposition'), fallbackName)
 
             // Create a download link
             const link = document.createElement('a')
-            link.href = dataUri
-            const fromDate = new Date(billPeriod.fromDate).toLocaleDateString('de-DE').replace(/\./g, '-')
-            const toDate = new Date(billPeriod.toDate).toLocaleDateString('de-DE').replace(/\./g, '-')
-            link.download = `Stromabrechnung_${fromDate}_${toDate}.pdf`
+            link.href = objectUrl
+            link.download = filename
+            document.body.appendChild(link)
             link.click()
+            link.remove()
+            URL.revokeObjectURL(objectUrl)
 
             // Mark as generated
             if (!pdfGenerated) {
@@ -30,10 +56,10 @@ export default function PdfDownloadButton({ billPeriod }) {
                 }
             }
 
-            toast.success('PDF generiert! 📄')
+            toast.success('PDF heruntergeladen.')
         } catch (e) {
             console.error('PDF generation error:', e)
-            toast.error('Fehler beim Generieren des PDFs.')
+            toast.error('Fehler beim Herunterladen des PDFs.')
         }
         setLoading(false)
     }
