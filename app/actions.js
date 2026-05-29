@@ -315,6 +315,7 @@ export async function markPdfGenerated(billPeriodId) {
             where: { id: billPeriodId },
             data: { pdfGenerated: true }
         })
+        revalidatePath('/billing-history')
         return { success: true }
     } catch (e) {
         console.error('markPdfGenerated error:', e)

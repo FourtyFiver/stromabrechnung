@@ -71,15 +71,15 @@ export default async function BillingHistoryPage() {
                                     <th>Kosten</th>
                                     <th>Gesendet</th>
                                     <th>Via</th>
-                                    <th style={{ width: '50px' }}></th>
+                                    <th>PDF</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {history.map((bp) => (
+                                    {serializedHistory.map((bp) => (
                                     <tr key={bp.id}>
                                         <td>
                                             <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                                                {bp.fromDate.toLocaleDateString('de-DE')} → {bp.toDate.toLocaleDateString('de-DE')}
+                                                    {new Date(bp.fromDate).toLocaleDateString('de-DE')} → {new Date(bp.toDate).toLocaleDateString('de-DE')}
                                             </div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.15rem' }}>
                                                 {bp.billingMonths} Monat{bp.billingMonths !== 1 ? 'e' : ''}
@@ -98,15 +98,15 @@ export default async function BillingHistoryPage() {
                                             </div>
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
-                                            {bp.sentAt.toLocaleDateString('de-DE')}
+                                            {new Date(bp.sentAt).toLocaleDateString('de-DE')}
                                         </td>
                                         <td>
                                             <span className={`badge ${bp.sentVia === 'telegram' ? 'badge-info' : 'badge-purple'}`}>
                                                 {bp.sentVia === 'telegram' ? '📱 Telegram' : bp.sentVia}
                                             </span>
                                         </td>
-                                        <td>
-                                            <PdfDownloadButton billPeriod={serializedHistory.find(s => s.id === bp.id)} />
+                                        <td style={{ whiteSpace: 'nowrap' }}>
+                                            <PdfDownloadButton billPeriod={bp} />
                                         </td>
                                     </tr>
                                 ))}
