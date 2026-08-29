@@ -326,7 +326,7 @@ export async function sendWhatsAppReportAction(fromId, toId) {
         return {
             success: false,
             error: rawNumber
-                ? 'Gespeicherte Nummer ist ungültig. Bitte in den Einstellungen prüfen (z. B. +49 170 1234567).'
+                ? 'Gespeicherte Nummer ist ungültig. Bitte in den Einstellungen prüfen (z. B. +49 123 456789).'
                 : 'Keine WhatsApp-Empfängernummer gesetzt. Bitte in den Einstellungen hinterlegen.'
         }
     }

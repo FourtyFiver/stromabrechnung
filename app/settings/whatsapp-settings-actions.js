@@ -31,7 +31,7 @@ export async function saveWhatsAppSettings(whatsappNumber) {
     if (!normalized) {
         return {
             success: false,
-            error: 'Ungültige Nummer. Erwartet z. B. +49 170 1234567, 0170 1234567 oder 491701234567.'
+            error: 'Ungültige Nummer. Erwartet z. B. +49 123 456789, 0123 456789 oder 49123456789.'
         }
     }
 

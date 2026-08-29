@@ -61,7 +61,7 @@ export default function WhatsAppSettingsCard({ initialNumber = '' }) {
                     type="tel"
                     name="whatsappNumber"
                     className="input-field"
-                    placeholder="+49 170 1234567"
+                    placeholder="+49 123 456789"
                     value={number}
                     onChange={e => handleNumberChange(e.target.value)}
                     disabled={saving}
