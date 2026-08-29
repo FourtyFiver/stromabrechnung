@@ -1,8 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getAvailableBillingPeriodsAction, sendCustomTelegramReport } from '../actions'
+import { getAvailableBillingPeriodsAction, sendCustomTelegramReport, getReportPreviewAction, sendWhatsAppReportAction } from '../actions'
 import { toast } from 'sonner'
+
+/**
+ * Rendert WhatsApp/Telegram-Markdown (*bold*, _italic_) für die Vorschau.
+ * Zeigt exakt das, was später im Chat ankommt.
+ */
+function renderMessageText(text) {
+    const parts = text.split(/(\*[^*\n]+\*|_[^_\n]+_)/g)
+    return parts.map((part, i) => {
+        if (part.length > 2 && part.startsWith('*') && part.endsWith('*')) {
+            return <strong key={i}>{part.slice(1, -1)}</strong>
+        }
+        if (part.length > 2 && part.startsWith('_') && part.endsWith('_')) {
+            return <em key={i}>{part.slice(1, -1)}</em>
+        }
+        return <span key={i}>{part}</span>
+    })
+}
 
 export default function SendReportDialog({ open, onClose }) {
     const [loading, setLoading] = useState(true)
@@ -12,16 +29,29 @@ export default function SendReportDialog({ open, onClose }) {
     const [customFrom, setCustomFrom] = useState('')
     const [customTo, setCustomTo] = useState('')
     const [error, setError] = useState('')
+    // Simulation (Vorschau)
+    const [previewLoading, setPreviewLoading] = useState(false)
+    const [preview, setPreview] = useState(null)
+    const [previewError, setPreviewError] = useState('')
+    // Fallback-Link, falls der Browser window.open blockt
+    const [pendingWhatsAppUrl, setPendingWhatsAppUrl] = useState(null)
 
     useEffect(() => {
         if (open) {
             loadPeriods()
+        } else {
+            // Dialog geschlossen: Simulation & Fehler zurücksetzen
+            setPreview(null)
+            setPreviewError('')
+            setPendingWhatsAppUrl(null)
         }
     }, [open])
 
     async function loadPeriods() {
         setLoading(true)
         setError('')
+        setPreview(null)
+        setPreviewError('')
         try {
             const result = await getAvailableBillingPeriodsAction()
             if (result.success) {
@@ -50,6 +80,37 @@ export default function SendReportDialog({ open, onClose }) {
         return null
     }
 
+    // Simulation: bei Periodenwechsel neu laden (lesend, kein Booking)
+    useEffect(() => {
+        if (!open || loading || !periodsData) return
+        const selection = getSelectedFromTo()
+        if (!selection || !selection.fromId || !selection.toId) {
+            setPreview(null)
+            setPreviewError('')
+            return
+        }
+        let cancelled = false
+        setPreviewLoading(true)
+        setPreviewError('')
+        getReportPreviewAction(selection.fromId, selection.toId)
+            .then(result => {
+                if (cancelled) return
+                if (result.success) {
+                    setPreview(result.data)
+                } else {
+                    setPreview(null)
+                    setPreviewError(result.error)
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setPreviewError('Fehler beim Laden der Simulation.')
+            })
+            .finally(() => {
+                if (!cancelled) setPreviewLoading(false)
+            })
+        return () => { cancelled = true }
+    }, [open, loading, selectedPeriod, customFrom, customTo, periodsData])
+
     async function handleSend() {
         setError('')
         const selection = getSelectedFromTo()
@@ -63,6 +124,41 @@ export default function SendReportDialog({ open, onClose }) {
             if (result.success) {
                 toast.success(result.warning || 'Report erfolgreich gesendet! 📤✅')
                 onClose()
+            } else {
+                setError(result.error)
+                toast.error(result.error)
+            }
+        } catch (e) {
+            setError('Ein unerwarteter Fehler ist aufgetreten.')
+        }
+        setSending(false)
+    }
+
+    async function handleSendWhatsApp() {
+        setError('')
+        const selection = getSelectedFromTo()
+        if (!selection || !selection.fromId || !selection.toId) {
+            setError('Bitte wähle einen Zeitraum aus.')
+            return
+        }
+        setSending(true)
+        try {
+            const result = await sendWhatsAppReportAction(selection.fromId, selection.toId)
+            if (result.success) {
+                const url = result.data?.whatsappUrl
+                toast.success('Zeitraum gebucht — WhatsApp öffnet sich, dort nur noch auf Senden tippen. 📲')
+                if (url) {
+                    const win = window.open(url, '_blank')
+                    if (win) {
+                        win.opener = null
+                        onClose()
+                    } else {
+                        // Popup-Blocker: Link im Dialog anbieten
+                        setPendingWhatsAppUrl(url)
+                    }
+                } else {
+                    onClose()
+                }
             } else {
                 setError(result.error)
                 toast.error(result.error)
@@ -157,7 +253,7 @@ export default function SendReportDialog({ open, onClose }) {
                                         type="radio"
                                         name="period"
                                         checked={selectedPeriod === period.id}
-                                        onChange={() => setSelectedPeriod(period.id)}
+                                        onChange={() => { setSelectedPeriod(period.id); setPendingWhatsAppUrl(null) }}
                                         style={{ accentColor: 'var(--primary)' }}
                                     />
                                     <div>
@@ -186,7 +282,7 @@ export default function SendReportDialog({ open, onClose }) {
                                         type="radio"
                                         name="period"
                                         checked={selectedPeriod === 'custom'}
-                                        onChange={() => setSelectedPeriod('custom')}
+                                        onChange={() => { setSelectedPeriod('custom'); setPendingWhatsAppUrl(null) }}
                                         style={{ accentColor: 'var(--primary)' }}
                                     />
                                     <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Benutzerdefiniert</div>
@@ -219,7 +315,67 @@ export default function SendReportDialog({ open, onClose }) {
                             )}
                         </div>
 
-                            {getSelectedFromTo() && getSelectedFromTo().fromId && getSelectedFromTo().toId && (
+                            {/* Simulation */}
+                            {getSelectedFromTo()?.fromId && getSelectedFromTo()?.toId && (
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        🔍 Simulation — so kommt die Nachricht an
+                                    </label>
+                                    {previewLoading ? (
+                                        <div style={{ textAlign: 'center', padding: '1.25rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                            <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'text-bottom', marginRight: '0.4rem' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                                            Berechne Simulation...
+                                        </div>
+                                    ) : previewError ? (
+                                        <div style={{
+                                            padding: '0.6rem 0.85rem',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            color: 'var(--danger)',
+                                            fontSize: '0.8rem'
+                                        }}>
+                                            ❌ {previewError}
+                                        </div>
+                                    ) : preview?.message ? (
+                                        <>
+                                            {/* WhatsApp-Style Bubble */}
+                                            <div style={{
+                                                background: 'linear-gradient(135deg, rgba(37, 211, 102, 0.12), rgba(18, 140, 126, 0.16))',
+                                                border: '1px solid rgba(37, 211, 102, 0.25)',
+                                                borderRadius: '12px',
+                                                padding: '0.85rem 1rem',
+                                                fontSize: '0.85rem',
+                                                lineHeight: 1.55,
+                                                whiteSpace: 'pre-wrap',
+                                                marginBottom: preview.whatsapp?.warning ? '0.5rem' : '0.75rem'
+                                            }}>
+                                                {renderMessageText(preview.message)}
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>
+                                                {preview.whatsapp?.configured
+                                                    ? `📲 Empfänger: +${preview.whatsapp.formattedNumber}`
+                                                    : '📲 WhatsApp-Empfänger noch nicht gesetzt (Einstellungen) — Telegram-Versand möglich.'}
+                                            </div>
+                                            {preview.whatsapp?.warning && (
+                                                <div style={{
+                                                    padding: '0.6rem 0.85rem',
+                                                    background: 'rgba(245, 158, 11, 0.1)',
+                                                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    color: 'var(--warning, #f59e0b)',
+                                                    fontSize: '0.78rem',
+                                                    marginBottom: '0.75rem'
+                                                }}>
+                                                    ⚠️ {preview.whatsapp.warning}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : null}
+                                </div>
+                            )}
+
+                            {getSelectedFromTo() && getSelectedFromTo().fromId && getSelectedFromTo().toId && !previewError && (
                                 <div style={{
                                     padding: '0.75rem 1rem',
                                     background: 'rgba(16, 185, 129, 0.08)',
@@ -229,7 +385,9 @@ export default function SendReportDialog({ open, onClose }) {
                                     fontSize: '0.8rem'
                                 }}>
                                     <div style={{ fontWeight: 600, color: 'var(--success)', marginBottom: '0.15rem' }}>✅ Bereit zum Senden</div>
-                                    <div style={{ color: 'var(--text-muted)' }}>Report wird an Telegram gesendet & Zählerstände als abgerechnet markiert.</div>
+                                    <div style={{ color: 'var(--text-muted)' }}>
+                                        Versand per Telegram oder WhatsApp — danach werden die Zählerstände als abgerechnet markiert.
+                                    </div>
                                 </div>
                             )}
 
@@ -244,6 +402,29 @@ export default function SendReportDialog({ open, onClose }) {
                                     fontSize: '0.8rem'
                                 }}>
                                     ❌ {error}
+                                </div>
+                            )}
+
+                            {pendingWhatsAppUrl && (
+                                <div style={{
+                                    padding: '0.85rem 1rem',
+                                    background: 'rgba(37, 211, 102, 0.1)',
+                                    border: '1px solid rgba(37, 211, 102, 0.3)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    marginBottom: '1rem',
+                                    fontSize: '0.85rem',
+                                    textAlign: 'center'
+                                }}>
+                                    <div style={{ marginBottom: '0.5rem' }}>✅ Zeitraum gebucht. Popup blockiert?</div>
+                                    <a href={pendingWhatsAppUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{
+                                        background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        textDecoration: 'none'
+                                    }}>
+                                        📲 WhatsApp öffnen
+                                    </a>
                                 </div>
                             )}
                         </>
@@ -261,19 +442,34 @@ export default function SendReportDialog({ open, onClose }) {
                         flexWrap: 'wrap'
                     }}>
                         <button
-                            onClick={handleSend}
-                            className="btn"
+                            onClick={handleSendWhatsApp}
                             disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
-                            style={{ flex: '1 1 220px' }}
+                            className="btn"
+                            style={{
+                                flex: '1 1 200px',
+                                background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.45rem'
+                            }}
                         >
                             {sending ? (
                                 <>
                                     <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
                                     Sende...
                                 </>
-                            ) : '📤 Report senden'}
+                            ) : '📲 Per WhatsApp senden'}
                         </button>
-                        <button onClick={onClose} className="btn btn-outline" style={{ flex: '1 1 140px' }}>
+                        <button
+                            onClick={handleSend}
+                            disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
+                            className="btn btn-outline"
+                            style={{ flex: '1 1 180px' }}
+                        >
+                            📤 Per Telegram senden
+                        </button>
+                        <button onClick={onClose} className="btn btn-outline" style={{ flex: '1 1 100px' }}>
                             Abbrechen
                         </button>
                     </div>

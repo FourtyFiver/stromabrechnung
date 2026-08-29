@@ -479,6 +479,11 @@ tbody tr:last-child td {
   color: #a78bfa;
 }
 
+.badge-whatsapp {
+  background: rgba(37, 211, 102, 0.15);
+  color: #25d366;
+}
+
 /* ===== Icon Background ===== */
 .icon-bg {
   display: flex;

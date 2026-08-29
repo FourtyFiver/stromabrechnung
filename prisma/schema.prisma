@@ -54,3 +54,8 @@ model BillPeriod {
 
   @@index([sentAt(sort: Desc)])
 }
+
+model AppSettings {
+  id             Int      @id @default(1)
+  whatsappNumber String?
+}

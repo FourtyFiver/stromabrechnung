@@ -101,8 +101,8 @@ export default async function BillingHistoryPage() {
                                             {new Date(bp.sentAt).toLocaleDateString('de-DE')}
                                         </td>
                                         <td>
-                                            <span className={`badge ${bp.sentVia === 'telegram' ? 'badge-info' : 'badge-purple'}`}>
-                                                {bp.sentVia === 'telegram' ? '📱 Telegram' : bp.sentVia}
+                                            <span className={`badge ${bp.sentVia === 'telegram' ? 'badge-info' : bp.sentVia === 'whatsapp' ? 'badge-whatsapp' : 'badge-purple'}`}>
+                                                {bp.sentVia === 'telegram' ? '📱 Telegram' : bp.sentVia === 'whatsapp' ? '💬 WhatsApp' : bp.sentVia}
                                             </span>
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap' }}>

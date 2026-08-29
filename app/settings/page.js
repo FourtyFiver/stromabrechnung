@@ -1,16 +1,18 @@
 import prisma from "@/lib/db"
 import SettingsForm from "./SettingsForm"
+import WhatsAppSettingsCard from "./WhatsAppSettingsCard"
 
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
-    const [currentPrice, allPrices] = await Promise.all([
+    const [currentPrice, allPrices, appSettings] = await Promise.all([
         prisma.priceConfig.findFirst({
             orderBy: { validFrom: 'desc' }
         }),
         prisma.priceConfig.findMany({
             orderBy: { validFrom: 'desc' }
-        })
+        }),
+        prisma.appSettings.findFirst()
     ])
 
     return (
@@ -25,6 +27,8 @@ export default async function SettingsPage() {
                     </h2>
                     <SettingsForm />
                 </div>
+
+                <WhatsAppSettingsCard initialNumber={appSettings?.whatsappNumber || ''} />
 
                 <div className="glass-card">
                     <h2>Aktueller Tarif</h2>

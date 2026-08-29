@@ -9,6 +9,9 @@ import { calculatePeriodCost } from "@/lib/billing"
 import { getAvailableBillingPeriods, validateBillingPeriod, createBillPeriod, getBillingHistory } from "@/lib/billing-status"
 import { findRelevantPrice } from "@/lib/pricing"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { getAppSettings, updateAppSettings } from "@/lib/app-settings"
+import { normalizeWhatsAppNumber, formatWhatsAppNumber, buildWhatsAppUrl } from "@/lib/whatsapp"
+import { formatReportMessage } from "@/lib/report-message"
 import { z } from "zod"
 
 const PriceConfigSchema = z.object({
@@ -187,13 +190,11 @@ export async function getAvailableBillingPeriodsAction() {
 }
 
 /**
- * Sende einen benutzerdefinierten Telegram-Report mit Billing-Tracking
+ * Baut den Report-Nachrichtentext für eine Periode (Simulation / Vorschau).
+ * Kein Senden, kein Booking — rein lesend. Nutzt dieselbe Formatierung wie
+ * der Telegram-Versand, damit die Simulation exakt das zeigt, was später rausgeht.
  */
-export async function sendCustomTelegramReport(fromId, toId) {
-    const session = await getServerSession(authOptions)
-    if (!session) return { success: false, error: 'Nicht eingeloggt' }
-
-    // 1. Validate period
+async function buildReportPayload(fromId, toId) {
     const validation = await validateBillingPeriod(fromId, toId)
     if (!validation.valid) {
         return { success: false, error: validation.error }
@@ -201,7 +202,6 @@ export async function sendCustomTelegramReport(fromId, toId) {
 
     const { fromReading, toReading } = validation
 
-    // 2. Fetch pricing
     const allPrices = await prisma.priceConfig.findMany({
         orderBy: { validFrom: 'desc' }
     })
@@ -211,31 +211,64 @@ export async function sendCustomTelegramReport(fromId, toId) {
         return { success: false, error: 'Kein Strompreis gefunden.' }
     }
 
-    // 3. Calculate
-    const result = calculatePeriodCost(fromReading, toReading, relevantPrice)
-    if (!result) {
+    const calc = calculatePeriodCost(fromReading, toReading, relevantPrice)
+    if (!calc) {
         return { success: false, error: 'Fehler bei der Berechnung.' }
     }
 
-    const { total: totalCost, energyCost, baseFeeCost, billingMonths, diffHT, diffNT } = result
-    const split = relevantPrice.baseFeeSplit !== undefined ? relevantPrice.baseFeeSplit : 50.0
+    return {
+        success: true,
+        fromReading,
+        toReading,
+        price: relevantPrice,
+        calc,
+        message: formatReportMessage({ fromReading, toReading, calc, price: relevantPrice })
+    }
+}
 
-    // 4. Format message
-    const message = `⚡ *Stromabrechnung Report* ⚡
+/**
+ * Report-Vorschau ("Simulation"): baut den Nachrichtentext für den gewählten
+ * Zeitraum, ohne zu senden oder zu buchen. Zeigt zusätzlich, wohin der
+ * WhatsApp-Versand gehen würde.
+ */
+export async function getReportPreviewAction(fromId, toId) {
+    const session = await getServerSession(authOptions)
+    if (!session) return { success: false, error: 'Nicht eingeloggt' }
 
-📅 *Zeitraum:*
-${fromReading.date.toLocaleDateString('de-DE')} ➡️ ${toReading.date.toLocaleDateString('de-DE')} (${billingMonths} Monate)
+    const payload = await buildReportPayload(fromId, toId)
+    if (!payload.success) return payload
 
-📊 *Verbrauch:*
-HT: ${diffHT.toFixed(1)} kWh
-NT: ${diffNT.toFixed(1)} kWh
+    const settings = await getAppSettings()
+    const rawNumber = settings?.whatsappNumber || ''
+    const normalized = rawNumber ? normalizeWhatsAppNumber(rawNumber) : null
 
-💰 *Zu zahlender Betrag:*
-*${totalCost} €*
-_(Arbeit: ${energyCost.toFixed(2)}€ | Grund: ${baseFeeCost.toFixed(2)}€)_
-_(Basis: ${relevantPrice.priceHT}€/${relevantPrice.priceNT}€ | ${relevantPrice.baseFee}€ @ ${split}%)_
+    return {
+        success: true,
+        data: {
+            message: payload.message,
+            whatsapp: {
+                configured: Boolean(normalized),
+                formattedNumber: normalized ? formatWhatsAppNumber(normalized) : null,
+                warning: rawNumber && !normalized
+                    ? 'Gespeicherte Nummer ist kein gültiges Format (z. B. +49 oder 0170…). Bitte in den Einstellungen korrigieren.'
+                    : null
+            }
+        }
+    }
+}
 
-Zählerstand neu: HT ${toReading.valueHT} / NT ${toReading.valueNT}`
+/**
+ * Sende einen benutzerdefinierten Telegram-Report mit Billing-Tracking
+ */
+export async function sendCustomTelegramReport(fromId, toId) {
+    const session = await getServerSession(authOptions)
+    if (!session) return { success: false, error: 'Nicht eingeloggt' }
+
+    const payload = await buildReportPayload(fromId, toId)
+    if (!payload.success) return payload
+
+    const { fromReading, toReading, calc, message } = payload
+    const { total: totalCost, energyCost, baseFeeCost, billingMonths, diffHT, diffNT } = calc
 
     // 5. Send to Telegram
     const sendResult = await sendTelegramMessage(message)
@@ -269,6 +302,72 @@ Zählerstand neu: HT ${toReading.valueHT} / NT ${toReading.valueNT}`
     revalidatePath('/billing-history')
 
     return { success: true }
+}
+
+/**
+ * WhatsApp-Versand per Click-to-Chat (wa.me):
+ * Bucht die Periode (sentVia='whatsapp') und liefert den fertigen
+ * wa.me-Link zurück. Der Client öffnet ihn — WhatsApp erscheint mit
+ * vorgefülltem Text; der User tippt nur noch "Senden".
+ */
+export async function sendWhatsAppReportAction(fromId, toId) {
+    const session = await getServerSession(authOptions)
+    if (!session) return { success: false, error: 'Nicht eingeloggt' }
+
+    const payload = await buildReportPayload(fromId, toId)
+    if (!payload.success) return payload
+
+    const { fromReading, toReading, price, calc, message } = payload
+    const settings = await getAppSettings()
+    const rawNumber = settings?.whatsappNumber || ''
+    const normalized = rawNumber ? normalizeWhatsAppNumber(rawNumber) : null
+
+    if (!normalized) {
+        return {
+            success: false,
+            error: rawNumber
+                ? 'Gespeicherte Nummer ist ungültig. Bitte in den Einstellungen prüfen (z. B. +49 170 1234567).'
+                : 'Keine WhatsApp-Empfängernummer gesetzt. Bitte in den Einstellungen hinterlegen.'
+        }
+    }
+
+    const urlResult = buildWhatsAppUrl(normalized, message)
+    if (!urlResult.ok) {
+        return { success: false, error: urlResult.error }
+    }
+
+    // Booking VOR dem Öffnen des Links: Der Klick öffnet WhatsApp, aber ob der
+    // User dort wirklich "Senden" tippt, sieht die App nicht. Ohne Booking
+    // hätten wir doppelte Risiko-Läufe (Doppel-Abrechnung). Bewusst so.
+    try {
+        await createBillPeriod({
+            fromId,
+            toId,
+            totalCost: calc.total,
+            energyCost: calc.energyCost,
+            baseFeeCost: calc.baseFeeCost,
+            billingMonths: calc.billingMonths,
+            diffHT: calc.diffHT,
+            diffNT: calc.diffNT,
+            sentVia: 'whatsapp',
+            fromReading,
+            toReading
+        })
+    } catch (e) {
+        console.error('createBillPeriod error:', e)
+        return { success: false, error: 'Berechnung OK, aber Billing-Tracking fehlgeschlagen.' }
+    }
+
+    revalidatePath('/')
+    revalidatePath('/billing-history')
+
+    return {
+        success: true,
+        data: {
+            whatsappUrl: urlResult.url,
+            formattedNumber: formatWhatsAppNumber(normalized)
+        }
+    }
 }
 
 /**
