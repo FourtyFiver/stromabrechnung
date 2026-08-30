@@ -4,7 +4,7 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     container_name: stromabrechnung
     ports:
-      - "3000:3000"
+      - "3002:3000"
     volumes:
       - ./prisma:/app/prisma
       - ./data:/app/data
