@@ -245,11 +245,8 @@ export async function getReportPreviewAction(fromId, toId) {
     // WhatsApp-URLs VORAB bauen (test + echt): Der Dialog kann die Links beim
     // Klick gesture-pur abfeuern (Custom-Scheme ohne await — sonst blockt iOS
     // window.open nach Server-Roundtrip still).
-    const waTestMsg = payload.message + '\n\n⚠️ TEST — nicht abgerechnet'
     const waSendMsg = payload.message
-    const waTest = normalized ? buildWhatsAppAppUrl(normalized, waTestMsg) : { ok: false }
     const waSend = normalized ? buildWhatsAppAppUrl(normalized, waSendMsg) : { ok: false }
-    const waTestHttps = normalized ? buildWhatsAppUrl(normalized, waTestMsg) : { ok: false }
     const waSendHttps = normalized ? buildWhatsAppUrl(normalized, waSendMsg) : { ok: false }
 
     return {
@@ -262,9 +259,7 @@ export async function getReportPreviewAction(fromId, toId) {
                 warning: rawNumber && !normalized
                     ? 'Gespeicherte Nummer ist kein gültiges Format (z. B. +49 oder 0170…). Bitte in den Einstellungen korrigieren.'
                     : null,
-                testSchemeUrl: waTest.ok ? waTest.url : null,
                 sendSchemeUrl: waSend.ok ? waSend.url : null,
-                testHttpsUrl: waTestHttps.ok ? waTestHttps.url : null,
                 sendHttpsUrl: waSendHttps.ok ? waSendHttps.url : null
             }
         }
@@ -275,7 +270,7 @@ export async function getReportPreviewAction(fromId, toId) {
  * Sende einen benutzerdefinierten Telegram-Report mit Billing-Tracking
  * mode='test': Report wird gesendet, aber NICHT als abgerechnet gebucht
  */
-export async function sendCustomTelegramReport(fromId, toId, mode = 'send') {
+export async function sendCustomTelegramReport(fromId, toId) {
     const session = await getServerSession(authOptions)
     if (!session) return { success: false, error: 'Nicht eingeloggt' }
 
@@ -288,21 +283,6 @@ export async function sendCustomTelegramReport(fromId, toId, mode = 'send') {
     // Telegram-Empfänger aus der WebUI (AppSettings), Fallback: TELEGRAM_CHAT_ID (.env)
     const settings = await getAppSettings()
     const parsedIds = parseTelegramChatIds(settings?.telegramChatIds || '')
-
-    // *** Routing-Regel: Test-Report geht NIEMALS an die Empfängerliste! ***
-    // mode='test': nur an die Test-Chat-ID (WebUI) bzw. .env-Fallback — der
-    // Mieter sieht keine Test-Nachrichten. mode='send': Empfängerliste
-    // (leer = .env-Fallback).
-    if (mode === 'test') {
-        const testId = settings?.telegramTestChatId || null
-        const sendResult = await sendTelegramMessage(
-            message + '\n\n⚠️ TEST — nicht abgerechnet',
-            testId ? [testId] : null
-        )
-        if (!sendResult.success) return sendResult
-        revalidatePath('/')
-        return { success: true, testMode: true, sentTo: testId || '(env)', warning: sendResult.warning }
-    }
 
     if (parsedIds.ids.length === 0 && !process.env.TELEGRAM_CHAT_ID) {
         return { success: false, error: 'Keine Telegram-Empfänger konfiguriert (Einstellungen oder TELEGRAM_CHAT_ID).' }

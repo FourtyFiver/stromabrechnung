@@ -125,7 +125,7 @@ export default function SendReportDialog({ open, onClose }) {
         return () => { cancelled = true }
     }, [open, loading, selectedPeriod, customFrom, customTo, periodsData])
 
-    async function handleSend(mode = 'send') {
+    async function handleSend() {
         setError('')
         const selection = getSelectedFromTo()
         if (!selection || !selection.fromId || !selection.toId) {
@@ -134,16 +134,10 @@ export default function SendReportDialog({ open, onClose }) {
         }
         setSending(true)
         try {
-            const result = await sendCustomTelegramReport(selection.fromId, selection.toId, mode)
+            const result = await sendCustomTelegramReport(selection.fromId, selection.toId)
             if (result.success) {
-                toast.success(mode === 'test'
-                    ? 'Test-Report gesendet — NICHT abgerechnet. 🧪'
-                    : (result.warning || 'Report erfolgreich gesendet! 📤✅'))
-                if (mode === 'test') {
-                    // Dialog offen lassen — User kann danach echt senden
-                } else {
-                    onClose()
-                }
+                toast.success(result.warning || 'Report erfolgreich gesendet! 📤✅')
+                onClose()
             } else {
                 setError(result.error)
                 toast.error(result.error)
@@ -154,7 +148,7 @@ export default function SendReportDialog({ open, onClose }) {
         setSending(false)
     }
 
-    async function handleSendWhatsApp(mode = 'send') {
+    async function handleSendWhatsApp() {
         setError('')
         const selection = getSelectedFromTo()
         if (!selection || !selection.fromId || !selection.toId) {
@@ -166,7 +160,7 @@ export default function SendReportDialog({ open, onClose }) {
             return
         }
 
-        sendWhatsAppViaScheme(mode, selection)
+        sendWhatsAppViaScheme(selection)
     }
 
     /**
@@ -178,10 +172,10 @@ export default function SendReportDialog({ open, onClose }) {
      * Falls WhatsApp den Scheme nicht kann (Desktop / nicht installiert):
      * nach 2s Fallback-Link im Dialog anbieten.
      */
-    function sendWhatsAppViaScheme(mode, selection) {
+    function sendWhatsAppViaScheme(selection) {
         const wa = preview?.whatsapp || {}
-        const schemeUrl = mode === 'test' ? wa.testSchemeUrl : wa.sendSchemeUrl
-        const httpsUrl = mode === 'test' ? wa.testHttpsUrl : wa.sendHttpsUrl
+        const schemeUrl = wa.sendSchemeUrl
+        const httpsUrl = wa.sendHttpsUrl
         if (!schemeUrl && !httpsUrl) {
             setError('WhatsApp-Link konnte nicht erzeugt werden.')
             return
@@ -199,10 +193,8 @@ export default function SendReportDialog({ open, onClose }) {
                     toast.error(result.error || 'Buchung fehlgeschlagen.')
                     return
                 }
-                toast.success(mode === 'test'
-                    ? 'TEST — nicht abgerechnet. 🧪'
-                    : 'Zeitraum gebucht — WhatsApp öffnet sich, dort nur noch auf Senden tippen. 📲')
-                if (mode !== 'test') onClose()
+                toast.success('Zeitraum gebucht — WhatsApp öffnet sich, dort nur noch auf Senden tippen. 📲')
+                onClose()
             })
             .catch(() => {
                 setError('Ein unerwarteter Fehler ist aufgetreten.')
@@ -503,16 +495,7 @@ export default function SendReportDialog({ open, onClose }) {
                         flexWrap: 'wrap'
                     }}>
                         <button
-                            onClick={() => handleSendWhatsApp('test')}
-                            disabled={sending || !preview?.whatsapp?.configured || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
-                            className="btn btn-outline"
-                            style={{ flex: '1 1 140px', fontSize: '0.9rem' }}
-                            title="Sendet an dich selbst, ohne die Periode abzurechnen"
-                        >
-                            {sending ? '...' : '🧪 Test-Send'}
-                        </button>
-                        <button
-                            onClick={() => handleSendWhatsApp('send')}
+                            onClick={() => handleSendWhatsApp()}
                             disabled={sending || !preview?.whatsapp?.configured || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
                             className="btn"
                             style={{
@@ -532,7 +515,7 @@ export default function SendReportDialog({ open, onClose }) {
                             ) : '📲 Per WhatsApp senden'}
                         </button>
                         <button
-                            onClick={() => handleSend('send')}
+                            onClick={() => handleSend()}
                             disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
                             className="btn"
                             style={{
