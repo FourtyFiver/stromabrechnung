@@ -161,52 +161,67 @@ export default function SendReportDialog({ open, onClose }) {
             setError('Bitte wähle einen Zeitraum aus.')
             return
         }
-        setSending(true)
-        // iOS Safari: window.open NACH einem await (Server-Action) ist tot —
-        // die User-Gesture ist durch das Warten verworfen, Safari blockt das
-        // Popup still (teils mit totem Window-Objekt, sodass auch
-        // Blocker-Detection versagt). Deshalb: leerer Tab SYNCHRON im
-        // Gesture-Kontext öffnen und nach der Action hinein navigieren.
-        let preWin = null
-        try {
-            preWin = window.open('about:blank', '_blank')
-            if (preWin) {
-                preWin.opener = null
-                try {
-                    preWin.document.write('<div style="font-family:-apple-system,system-ui,sans-serif;color:#9ca3af;padding:1.5rem;font-size:15px">WhatsApp wird geöffnet …</div>')
-                    preWin.document.close()
-                } catch {}
-            }
-        } catch {}
-        try {
-            const result = await sendWhatsAppReportAction(selection.fromId, selection.toId, mode)
-            if (result.success) {
-                const url = result.data?.whatsappUrl
-                toast.success(mode === 'test'
-                    ? 'Test-Link erzeugt — NICHT abgerechnet. 🧪'
-                    : 'Zeitraum gebucht — WhatsApp öffnet sich, dort nur noch auf Senden tippen. 📲')
-                if (url) {
-                    if (preWin && !preWin.closed) {
-                        preWin.location.href = url
-                        if (mode !== 'test') onClose()
-                    } else {
-                        // Popup-Blocker: Link im Dialog anbieten
-                        setPendingWhatsAppUrl(url)
-                    }
-                } else if (mode !== 'test') {
-                    onClose()
-                }
-            } else {
-                if (preWin && !preWin.closed) preWin.close()
-                setError(result.error)
-                toast.error(result.error)
-            }
-        } catch (e) {
-            if (preWin && !preWin.closed) preWin.close()
-            setError('Ein unerwarteter Fehler ist aufgetreten.')
+        if (!preview?.whatsapp?.configured) {
+            setError('Keine WhatsApp-Nummer gespeichert. Bitte in den Einstellungen hinterlegen.')
+            return
         }
-        setSending(false)
+
+        sendWhatsAppViaScheme(mode, selection)
     }
+
+    /**
+     * Gesture-purer WhatsApp-Versand: Der Klick navigiert SYNCRON zum
+     * whatsapp://-Scheme (iOS verliert sonst die User-Gesture beim
+     * Server-Roundtrip und blockt window.open still). Die Buchung läuft
+     * parallel fire-and-forget auf dem Server — sie passiert dort VOR dem
+     * WhatsApp-Öffnen (SendWhatsAppReportAction), Semantik bleibt gleich.
+     * Falls WhatsApp den Scheme nicht kann (Desktop / nicht installiert):
+     * nach 2s Fallback-Link im Dialog anbieten.
+     */
+    function sendWhatsAppViaScheme(mode, selection) {
+        const wa = preview?.whatsapp || {}
+        const schemeUrl = mode === 'test' ? wa.testSchemeUrl : wa.sendSchemeUrl
+        const httpsUrl = mode === 'test' ? wa.testHttpsUrl : wa.sendHttpsUrl
+        if (!schemeUrl && !httpsUrl) {
+            setError('WhatsApp-Link konnte nicht erzeugt werden.')
+            return
+        }
+        setSending(true)
+
+        // 1) Schema-URL SOFORT im Gesture-Kontext
+        window.location.href = schemeUrl || httpsUrl
+
+        // 2) Buchung parallel anstoßen (test: kein Booking, nur Toast)
+        const booking = sendWhatsAppReportAction(selection.fromId, selection.toId, mode)
+            .then(result => {
+                if (!result.success) {
+                    setError(result.error || 'Buchung fehlgeschlagen.')
+                    toast.error(result.error || 'Buchung fehlgeschlagen.')
+                    return
+                }
+                toast.success(mode === 'test'
+                    ? 'TEST — nicht abgerechnet. 🧪'
+                    : 'Zeitraum gebucht — WhatsApp öffnet sich, dort nur noch auf Senden tippen. 📲')
+                if (mode !== 'test') onClose()
+            })
+            .catch(() => {
+                setError('Ein unerwarteter Fehler ist aufgetreten.')
+            })
+            .finally(() => {
+                setSending(false)
+            })
+
+        // 3) Fallback: Ist nach 2s noch ein WhatsApp-Fenster offen? Wenn die
+        //    Seite noch sichtbar ist (kein WhatsApp-Handoff), HTTPS-Link zeigen.
+        setTimeout(() => {
+            if (document.visibilityState === 'visible' && httpsUrl) {
+                setPendingWhatsAppUrl(httpsUrl)
+            }
+        }, 2000)
+
+        return booking
+    }
+
 
     if (!open) return null
 
@@ -489,7 +504,7 @@ export default function SendReportDialog({ open, onClose }) {
                     }}>
                         <button
                             onClick={() => handleSendWhatsApp('test')}
-                            disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
+                            disabled={sending || !preview?.whatsapp?.configured || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
                             className="btn btn-outline"
                             style={{ flex: '1 1 140px', fontSize: '0.9rem' }}
                             title="Sendet an dich selbst, ohne die Periode abzurechnen"
@@ -498,7 +513,7 @@ export default function SendReportDialog({ open, onClose }) {
                         </button>
                         <button
                             onClick={() => handleSendWhatsApp('send')}
-                            disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
+                            disabled={sending || !preview?.whatsapp?.configured || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
                             className="btn"
                             style={{
                                 flex: '1 1 200px',

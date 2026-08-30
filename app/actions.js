@@ -10,7 +10,7 @@ import { getAvailableBillingPeriods, validateBillingPeriod, createBillPeriod, ge
 import { findRelevantPrice } from "@/lib/pricing"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { getAppSettings, updateAppSettings } from "@/lib/app-settings"
-import { normalizeWhatsAppNumber, formatWhatsAppNumber, buildWhatsAppUrl } from "@/lib/whatsapp"
+import { normalizeWhatsAppNumber, formatWhatsAppNumber, buildWhatsAppUrl, buildWhatsAppAppUrl } from "@/lib/whatsapp"
 import { formatReportMessage } from "@/lib/report-message"
 import { z } from "zod"
 
@@ -242,6 +242,16 @@ export async function getReportPreviewAction(fromId, toId) {
     const rawNumber = settings?.whatsappNumber || ''
     const normalized = rawNumber ? normalizeWhatsAppNumber(rawNumber) : null
 
+    // WhatsApp-URLs VORAB bauen (test + echt): Der Dialog kann die Links beim
+    // Klick gesture-pur abfeuern (Custom-Scheme ohne await — sonst blockt iOS
+    // window.open nach Server-Roundtrip still).
+    const waTestMsg = payload.message + '\n\n⚠️ TEST — nicht abgerechnet'
+    const waSendMsg = payload.message
+    const waTest = normalized ? buildWhatsAppAppUrl(normalized, waTestMsg) : { ok: false }
+    const waSend = normalized ? buildWhatsAppAppUrl(normalized, waSendMsg) : { ok: false }
+    const waTestHttps = normalized ? buildWhatsAppUrl(normalized, waTestMsg) : { ok: false }
+    const waSendHttps = normalized ? buildWhatsAppUrl(normalized, waSendMsg) : { ok: false }
+
     return {
         success: true,
         data: {
@@ -251,7 +261,11 @@ export async function getReportPreviewAction(fromId, toId) {
                 formattedNumber: normalized ? formatWhatsAppNumber(normalized) : null,
                 warning: rawNumber && !normalized
                     ? 'Gespeicherte Nummer ist kein gültiges Format (z. B. +49 oder 0170…). Bitte in den Einstellungen korrigieren.'
-                    : null
+                    : null,
+                testSchemeUrl: waTest.ok ? waTest.url : null,
+                sendSchemeUrl: waSend.ok ? waSend.url : null,
+                testHttpsUrl: waTestHttps.ok ? waTestHttps.url : null,
+                sendHttpsUrl: waSendHttps.ok ? waSendHttps.url : null
             }
         }
     }
