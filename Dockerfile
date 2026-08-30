@@ -52,6 +52,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy prisma directory for migrations/schema
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+# Schema-Kopie außerhalb des Volume-Mounts: /app/prisma wird in der Produktion
+# per bind mount überschrieben (DB-Lage), dadurch schattiert der HOST sein
+# schema.prisma das image-interne. db push nutzt deshalb bewusst diese Kopie,
+# damit Schema-Updates aus neuen Images immer ankommen.
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma-internal
 # Copy db dir if it exists, or let it be created by volume? 
 # We'll use a volume mount for the DB, so no need to copy a pre-existing DB.
 

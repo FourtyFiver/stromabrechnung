@@ -19,7 +19,8 @@ elif [ "$ADMIN_PASS" = "admin123" ] || [ "$ADMIN_PASS" = "secure_password_please
 fi
 
 # Run schema push (safe for SQLite, idempotent)
-npx --yes prisma@6 db push
+# Schema aus dem Image (nicht vom gemounteten Volume) — siehe Dockerfile-Kommentar
+npx --yes prisma@6 db push --schema /app/prisma-internal/schema.prisma
 
 # One-time migration: mark existing readings as billed
 MIGRATION_FLAG="/app/data/.migration-mark-billed-done"
