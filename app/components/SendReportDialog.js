@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { getAvailableBillingPeriodsAction, sendCustomTelegramReport, getReportPreviewAction, sendWhatsAppReportAction } from '../actions'
 import { toast } from 'sonner'
 
@@ -192,7 +193,10 @@ export default function SendReportDialog({ open, onClose }) {
 
     if (!open) return null
 
-    return (
+    // Portal ins document.body: Der Dialog liegt OUTSIDE jeder .glass-card.
+    // backdrop-filter-Cards erzeugen auf iOS eigene Stacking-Contexte — ein fixed
+    // Overlay INNERHALB einer Card liegt immer UNTER fremden Cards (Status-Card).
+    return createPortal(
         <div style={{
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
@@ -517,5 +521,5 @@ export default function SendReportDialog({ open, onClose }) {
                 )}
             </div>
         </div>
-    )
+    , document.body)
 }
