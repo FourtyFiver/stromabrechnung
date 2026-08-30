@@ -56,6 +56,8 @@ model BillPeriod {
 }
 
 model AppSettings {
-  id             Int      @id @default(1)
-  whatsappNumber String?
+  id                Int      @id @default(1)
+  whatsappNumber    String?
+  telegramChatIds   String?  @db.Text
+  telegramTestChatId String?
 }

@@ -1,6 +1,7 @@
 import prisma from "@/lib/db"
 import SettingsForm from "./SettingsForm"
 import WhatsAppSettingsCard from "./WhatsAppSettingsCard"
+import TelegramSettingsCard from "./TelegramSettingsCard"
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,11 @@ export default async function SettingsPage() {
                 </div>
 
                 <WhatsAppSettingsCard initialNumber={appSettings?.whatsappNumber || ''} />
+
+                <TelegramSettingsCard 
+                    initialChatIdsText={appSettings?.telegramChatIds || ''} 
+                    initialTestChatId={appSettings?.telegramTestChatId || ''} 
+                />
 
                 <div className="glass-card">
                     <h2>Aktueller Tarif</h2>

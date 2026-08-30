@@ -285,16 +285,31 @@ export async function sendCustomTelegramReport(fromId, toId, mode = 'send') {
     const { fromReading, toReading, calc, message } = payload
     const { total: totalCost, energyCost, baseFeeCost, billingMonths, diffHT, diffNT } = calc
 
-    // Test-Modus: Nur senden, keine Buchung
+    // Telegram-Empfänger aus der WebUI (AppSettings), Fallback: TELEGRAM_CHAT_ID (.env)
+    const settings = await getAppSettings()
+    const parsedIds = parseTelegramChatIds(settings?.telegramChatIds || '')
+
+    // *** Routing-Regel: Test-Report geht NIEMALS an die Empfängerliste! ***
+    // mode='test': nur an die Test-Chat-ID (WebUI) bzw. .env-Fallback — der
+    // Mieter sieht keine Test-Nachrichten. mode='send': Empfängerliste
+    // (leer = .env-Fallback).
     if (mode === 'test') {
-        const sendResult = await sendTelegramMessage(message + '\n\n⚠️ TEST — nicht abgerechnet')
+        const testId = settings?.telegramTestChatId || null
+        const sendResult = await sendTelegramMessage(
+            message + '\n\n⚠️ TEST — nicht abgerechnet',
+            testId ? [testId] : null
+        )
         if (!sendResult.success) return sendResult
         revalidatePath('/')
-        return { success: true, testMode: true }
+        return { success: true, testMode: true, sentTo: testId || '(env)', warning: sendResult.warning }
     }
 
-    // 5. Send to Telegram
-    const sendResult = await sendTelegramMessage(message)
+    if (parsedIds.ids.length === 0 && !process.env.TELEGRAM_CHAT_ID) {
+        return { success: false, error: 'Keine Telegram-Empfänger konfiguriert (Einstellungen oder TELEGRAM_CHAT_ID).' }
+    }
+
+    // 5. Send to Telegram (alle Empfänger — Teilerfolg geht als warning durch)
+    const sendResult = await sendTelegramMessage(message, parsedIds.ids.length > 0 ? parsedIds.ids : null)
     if (!sendResult.success) {
         return sendResult
     }
