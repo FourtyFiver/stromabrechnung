@@ -194,7 +194,7 @@ export async function getAvailableBillingPeriodsAction() {
  * Kein Senden, kein Booking — rein lesend. Nutzt dieselbe Formatierung wie
  * der Telegram-Versand, damit die Simulation exakt das zeigt, was später rausgeht.
  */
-async function buildReportPayload(fromId, toId) {
+export async function buildReportPayload(fromId, toId) {
     const validation = await validateBillingPeriod(fromId, toId)
     if (!validation.valid) {
         return { success: false, error: validation.error }
