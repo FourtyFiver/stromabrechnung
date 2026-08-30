@@ -185,8 +185,8 @@ export default function SendReportDialog({ open, onClose }) {
         // 1) Schema-URL SOFORT im Gesture-Kontext
         window.location.href = schemeUrl || httpsUrl
 
-        // 2) Buchung parallel anstoßen (test: kein Booking, nur Toast)
-        const booking = sendWhatsAppReportAction(selection.fromId, selection.toId, mode)
+        // 2) Buchung parallel anstoßen ( kein mode mehr — Dialog-Buttons buchen immer)
+        const booking = sendWhatsAppReportAction(selection.fromId, selection.toId, 'send')
             .then(result => {
                 if (!result.success) {
                     setError(result.error || 'Buchung fehlgeschlagen.')
