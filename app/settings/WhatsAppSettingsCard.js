@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { saveWhatsAppSettings } from './whatsapp-settings-actions'
+import { getWhatsAppTestUrls } from './whatsapp-test-actions'
 import { toast } from 'sonner'
 
 /**
@@ -13,6 +14,7 @@ export default function WhatsAppSettingsCard({ initialNumber = '' }) {
     const [number, setNumber] = useState(initialNumber)
     const [saving, setSaving] = useState(false)
     const [preview, setPreview] = useState('')
+    const [testing, setTesting] = useState(false)
 
     function handleNumberChange(value) {
         setNumber(value)
@@ -41,6 +43,49 @@ export default function WhatsAppSettingsCard({ initialNumber = '' }) {
             toast.error('Ein unerwarteter Fehler ist aufgetreten.')
         }
         setSaving(false)
+    }
+
+    /**
+     * Gesture-purer WhatsApp-Test (gleiche Technik wie der Report-Dialog):
+     * Syncron whatsapp://-Scheme navigieren (iOS-Gesture bleibt erhalten,
+     * kein Rest-Tab), Fallback-Link als Toast-Info falls nichts passiert.
+     */
+    async function handleTest() {
+        setTesting(true)
+        try {
+            const result = await getWhatsAppTestUrls()
+            if (!result.success) {
+                toast.error('Fehler: ' + result.error)
+                setTesting(false)
+                return
+            }
+            const { schemeUrl, httpsUrl, formattedNumber } = result.data
+
+            // Scheme sofort abfeuern (wir sind im Click-Kontext des Buttons)
+            if (schemeUrl) {
+                window.location.href = schemeUrl
+            } else if (httpsUrl) {
+                window.open(httpsUrl, '_blank', 'noopener')
+            }
+
+            // Fallback: nach 2s noch sichtbar? -> HTTPS-Link per Toast anbieten
+            setTimeout(async () => {
+                if (document.visibilityState === 'visible' && httpsUrl) {
+                    toast.info('WhatsApp hat nicht geöffnet? Test-Link: ' + httpsUrl, {
+                        duration: 15000,
+                        action: {
+                            label: 'Link öffnen',
+                            onClick: () => window.open(httpsUrl, '_blank', 'noopener')
+                        }
+                    })
+                }
+            }, 2000)
+
+            toast.success(`Test-Link an ${ formattedNumber} geöffnet — im Eigen-Chat landen deine Nachrichten bei dir selbst. 📲`)
+        } catch (e) {
+            toast.error('Ein unerwarteter Fehler ist aufgetreten.')
+        }
+        setTesting(false)
     }
 
     return (
@@ -72,9 +117,14 @@ export default function WhatsAppSettingsCard({ initialNumber = '' }) {
                     </div>
                 )}
             </div>
-            <button onClick={handleSave} className="btn" disabled={saving}>
-                {saving ? 'Speichere...' : 'Speichern'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <button onClick={handleSave} className="btn" disabled={saving}>
+                    {saving ? 'Speichere...' : 'Speichern'}
+                </button>
+                <button onClick={handleTest} className="btn btn-outline" disabled={testing || saving}>
+                    {testing ? 'Öffne...' : '📱 Test-Nachricht senden'}
+                </button>
+            </div>
         </div>
     )
 }

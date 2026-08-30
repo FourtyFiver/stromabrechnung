@@ -29,13 +29,6 @@ export default async function SettingsPage() {
                     <SettingsForm />
                 </div>
 
-                <WhatsAppSettingsCard initialNumber={appSettings?.whatsappNumber || ''} />
-
-                <TelegramSettingsCard 
-                    initialChatIdsText={appSettings?.telegramChatIds || ''} 
-                    initialTestChatId={appSettings?.telegramTestChatId || ''} 
-                />
-
                 <div className="glass-card">
                     <h2>Aktueller Tarif</h2>
                     {currentPrice ? (
@@ -72,6 +65,13 @@ export default async function SettingsPage() {
                         </div>
                     )}
                 </div>
+
+                <WhatsAppSettingsCard initialNumber={appSettings?.whatsappNumber || ''} />
+
+                <TelegramSettingsCard 
+                    initialChatIdsText={appSettings?.telegramChatIds || ''} 
+                    initialTestChatId={appSettings?.telegramTestChatId || ''} 
+                />
             </div>
 
             {/* Price History */}
