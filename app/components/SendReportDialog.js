@@ -162,6 +162,22 @@ export default function SendReportDialog({ open, onClose }) {
             return
         }
         setSending(true)
+        // iOS Safari: window.open NACH einem await (Server-Action) ist tot —
+        // die User-Gesture ist durch das Warten verworfen, Safari blockt das
+        // Popup still (teils mit totem Window-Objekt, sodass auch
+        // Blocker-Detection versagt). Deshalb: leerer Tab SYNCHRON im
+        // Gesture-Kontext öffnen und nach der Action hinein navigieren.
+        let preWin = null
+        try {
+            preWin = window.open('about:blank', '_blank')
+            if (preWin) {
+                preWin.opener = null
+                try {
+                    preWin.document.write('<div style="font-family:-apple-system,system-ui,sans-serif;color:#9ca3af;padding:1.5rem;font-size:15px">WhatsApp wird geöffnet …</div>')
+                    preWin.document.close()
+                } catch {}
+            }
+        } catch {}
         try {
             const result = await sendWhatsAppReportAction(selection.fromId, selection.toId, mode)
             if (result.success) {
@@ -170,9 +186,8 @@ export default function SendReportDialog({ open, onClose }) {
                     ? 'Test-Link erzeugt — NICHT abgerechnet. 🧪'
                     : 'Zeitraum gebucht — WhatsApp öffnet sich, dort nur noch auf Senden tippen. 📲')
                 if (url) {
-                    const win = window.open(url, '_blank')
-                    if (win) {
-                        win.opener = null
+                    if (preWin && !preWin.closed) {
+                        preWin.location.href = url
                         if (mode !== 'test') onClose()
                     } else {
                         // Popup-Blocker: Link im Dialog anbieten
@@ -182,10 +197,12 @@ export default function SendReportDialog({ open, onClose }) {
                     onClose()
                 }
             } else {
+                if (preWin && !preWin.closed) preWin.close()
                 setError(result.error)
                 toast.error(result.error)
             }
         } catch (e) {
+            if (preWin && !preWin.closed) preWin.close()
             setError('Ein unerwarteter Fehler ist aufgetreten.')
         }
         setSending(false)
