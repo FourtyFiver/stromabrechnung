@@ -60,7 +60,7 @@ Nachrichten werden per **Click-to-Chat** geöffnet: Die App baut den fertigen Li
 - Die Nummer liegt in der Datenbank (Tabelle `AppSettings`), nicht in der `.env`
 - 📱 **Test-Nachricht senden:** Öffnet WhatsApp mit dem vollständigen Report der neuesten offenen Periode (mit TEST-Fußnote) im **Eigen-Chat** („Message yourself") — die Konfiguration lässt sich komplett durchtesten, ohne jemanden zu kontaktieren. Dazu die eigene Nummer eintragen.
 
-**Echte Reports senden:** Im Dashboard über **📊 Report erstellen** → Zeitraum wählen → **📲 Per WhatsApp senden**. WhatsApp öffnet sich mit dem fertigen Text — dort noch auf Senden tippen.
+**Echte Reports senden:** Im Dashboard über **📊 Report erstellen** → Zeitraum wählen → **📲 Per WhatsApp senden**. WhatsApp öffnet sich direkt beim Tippen mit dem fertigen Text — dort noch auf Senden tippen. Öffnet sich WhatsApp nicht (nicht installiert oder Desktop), erscheint nach ~2 Sekunden ein klickbarer Fallback-Link im Dialog.
 
 **Hinweise:**
 - Die WhatsApp-Nummer braucht für den Versand einen aktiven WhatsApp-Account (der Mieter muss den Chat also empfangen können).
@@ -69,6 +69,7 @@ Nachrichten werden per **Click-to-Chat** geöffnet: Die App baut den fertigen Li
 
 ## ❓ Troubleshooting & Hinweise
 
+- **Altes Verhalten nach App-Update?** iOS Safari hält alte JS-Bundles hart im Cache. Nach jedem `docker compose pull && docker compose up -d` Safari **komplett schließen** (App-Switcher, Safari wegswipen) und neu öffnen.
 - **Start-Login:** Die voreingestellten Zugangsdaten lauten `admin` / `admin123` (falls nicht in der `.env` überschrieben). Das `.env.example` zeigt die Sonder-Regularien für `ADMIN_PASSWORD` (keine Anführungszeichen, `$` muss als `$$` doppelt werden).
 - **Dashboard leer?** Für die Verbrauchs- und Kostenberechnung werden immer mindestens **2 Zählerstände** benötigt.
 - **Fehlbuchung nach abgebrochenem Versand?** Abrechnungs-Historie öffnen → 🔄 Reset-Button der Periode drücken: Der BillPeriod-Eintrag wird gelöscht, die Zählerstände werden wieder als „offen" gesetzt und können neu abgerechnet werden.
