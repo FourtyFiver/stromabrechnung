@@ -69,24 +69,42 @@ export async function sendTelegramTestMessage() {
         return { success: false, error: 'Nicht authentifiziert' }
     }
 
+    // Test-Ziel: WebUI-Test-Chat-ID, Fallback .env (TELEGRAM_CHAT_ID).
+    // Die Empfängerliste wird bewusst NICHT angetastet.
     const settings = await getAppSettings()
     const testId = settings?.telegramTestChatId || null
-    const targets = testId ? [testId] : null // null = sendTelegramMessage fällt auf .env zurück
+    const targets = testId ? [testId] : null
 
     if (!testId && !process.env.TELEGRAM_CHAT_ID) {
         return { success: false, error: 'Kein Test-Ziel konfiguriert: Test-Chat-ID eintragen oder TELEGRAM_CHAT_ID in .env setzen.' }
     }
 
-    const msg = '✅ Telegram-Test: Konfiguration der Stromabrechnung funktioniert.'
+    // Echten Report-Inhalt der neuesten offenen Periode verwenden — der Test
+    // prüft nicht nur den Versand, sondern auch, ob die Nachricht richtig
+    // formatiert ankommt (Emojis, Zeilenumbrüche, Werte).
+    const periods = await getAvailableBillingPeriods()
+    if (!periods.periods || periods.periods.length === 0) {
+        return { success: false, error: periods.message || 'Keine Periode für den Test verfügbar — mindestens 2 Zählerstände nötig.' }
+    }
+    // Neueste Periode = größtes toDate
+    const latest = [...periods.periods].sort((a, b) => b.toDate - a.toDate)[0]
+
+    const payload = await buildReportPayload(latest.fromId, latest.toId)
+    if (!payload.success) {
+        return { success: false, error: payload.error }
+    }
+
+    const msg = payload.message + '\n\n⚠️ TEST — nicht abgerechnet'
     const result = await sendTelegramMessage(msg, targets)
 
     if (!result.success) {
-        return { success: false, error: result.error || 'Test-Nachricht fehlgeschlagen.' }
+        return { success: false, error: result.error || 'Test-Report fehlgeschlagen.' }
     }
     return {
         success: true,
         data: {
             sentTo: testId || '(aus .env: TELEGRAM_CHAT_ID)',
+            periodLabel: latest.label,
             warning: result.warning
         }
     }

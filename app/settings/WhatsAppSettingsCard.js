@@ -59,7 +59,7 @@ export default function WhatsAppSettingsCard({ initialNumber = '' }) {
                 setTesting(false)
                 return
             }
-            const { schemeUrl, httpsUrl, formattedNumber } = result.data
+            const { schemeUrl, httpsUrl, formattedNumber, periodLabel } = result.data
 
             // Scheme sofort abfeuern (wir sind im Click-Kontext des Buttons)
             if (schemeUrl) {
@@ -81,7 +81,7 @@ export default function WhatsAppSettingsCard({ initialNumber = '' }) {
                 }
             }, 2000)
 
-            toast.success(`Test-Link an ${ formattedNumber} geöffnet — im Eigen-Chat landen deine Nachrichten bei dir selbst. 📲`)
+            toast.success(`Test-Report (${ periodLabel || 'neueste Periode'}) an ${ formattedNumber} — Eigen-Chat, nichts an den Mieter. 📲`)
         } catch (e) {
             toast.error('Ein unerwarteter Fehler ist aufgetreten.')
         }

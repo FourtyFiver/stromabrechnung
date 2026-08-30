@@ -4,11 +4,15 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getAppSettings } from "@/lib/app-settings"
 import { normalizeWhatsAppNumber, buildWhatsAppUrl, buildWhatsAppAppUrl } from "@/lib/whatsapp"
+import { getAvailableBillingPeriods } from "@/lib/billing-status"
+import { buildReportPayload } from "@/app/actions"
 
 /**
  * Liefert die WhatsApp-Test-Links (Custom-Scheme + HTTPS) für die GESPEICHERTE
- * Nummer. Test-Nachricht ist kurz und geht nie an den Mieter — der User öffnet
- * sie selbst und landet im Eigen-Chat ("Message yourself").
+ * Nummer — mit dem ECHTEN Report-Inhalt der neuesten offenen Periode plus
+ * Test-Hinweis. Der Test prueft damit nicht nur den Versand, sondern auch,
+ * ob Emojis/Umbrueche/Werte ordentlich im Link ankommen. Geöffnet wird im
+ * Eigen-Chat ("Message yourself") — kein Empfänger wird kontaktiert.
  */
 export async function getWhatsAppTestUrls() {
     const session = await getServerSession(authOptions)
@@ -23,7 +27,19 @@ export async function getWhatsAppTestUrls() {
         return { success: false, error: 'Keine WhatsApp-Nummer gespeichert. Bitte zuerst speichern.' }
     }
 
-    const msg = '✅ WhatsApp-Test: Konfiguration der Stromabrechnung funktioniert.'
+    // Neueste offene Periode für den echten Report-Inhalt
+    const periods = await getAvailableBillingPeriods()
+    if (!periods.periods || periods.periods.length === 0) {
+        return { success: false, error: periods.message || 'Keine Periode für den Test verfügbar — mindestens 2 Zählerstände nötig.' }
+    }
+    const latest = [...periods.periods].sort((a, b) => b.toDate - a.toDate)[0]
+
+    const payload = await buildReportPayload(latest.fromId, latest.toId)
+    if (!payload.success) {
+        return { success: false, error: payload.error }
+    }
+
+    const msg = payload.message + '\n\n⚠️ TEST — nicht abgerechnet'
     const scheme = buildWhatsAppAppUrl(normalized, msg)
     const https = buildWhatsAppUrl(normalized, msg)
 
@@ -32,7 +48,8 @@ export async function getWhatsAppTestUrls() {
         data: {
             schemeUrl: scheme.ok ? scheme.url : null,
             httpsUrl: https.ok ? https.url : null,
-            formattedNumber: '+' + normalized
+            formattedNumber: '+' + normalized,
+            periodLabel: latest.label
         }
     }
 }

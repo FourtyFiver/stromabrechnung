@@ -49,7 +49,8 @@ export default function TelegramSettingsCard({ initialChatIdsText = '', initialT
             if (result.success) {
                 const first = result.results?.[0]
                 const detail = first && !first.ok ? ` (${first.error})` : ''
-                toast.success(`Test-Nachricht gesendet an ${result.sentTo}${detail} 📤`)
+                const period = result.periodLabel ? ` — ${result.periodLabel}` : ''
+                toast.success(`Test-Report gesendet an ${result.sentTo}${period}${detail} 📤`)
             } else {
                 toast.error('Fehler: ' + result.error)
             }
