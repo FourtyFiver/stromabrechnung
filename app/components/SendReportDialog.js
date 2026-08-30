@@ -111,7 +111,7 @@ export default function SendReportDialog({ open, onClose }) {
         return () => { cancelled = true }
     }, [open, loading, selectedPeriod, customFrom, customTo, periodsData])
 
-    async function handleSend() {
+    async function handleSend(mode = 'send') {
         setError('')
         const selection = getSelectedFromTo()
         if (!selection || !selection.fromId || !selection.toId) {
@@ -120,10 +120,16 @@ export default function SendReportDialog({ open, onClose }) {
         }
         setSending(true)
         try {
-            const result = await sendCustomTelegramReport(selection.fromId, selection.toId)
+            const result = await sendCustomTelegramReport(selection.fromId, selection.toId, mode)
             if (result.success) {
-                toast.success(result.warning || 'Report erfolgreich gesendet! 📤✅')
-                onClose()
+                toast.success(mode === 'test'
+                    ? 'Test-Report gesendet — NICHT abgerechnet. 🧪'
+                    : (result.warning || 'Report erfolgreich gesendet! 📤✅'))
+                if (mode === 'test') {
+                    // Dialog offen lassen — User kann danach echt senden
+                } else {
+                    onClose()
+                }
             } else {
                 setError(result.error)
                 toast.error(result.error)
@@ -134,7 +140,7 @@ export default function SendReportDialog({ open, onClose }) {
         setSending(false)
     }
 
-    async function handleSendWhatsApp() {
+    async function handleSendWhatsApp(mode = 'send') {
         setError('')
         const selection = getSelectedFromTo()
         if (!selection || !selection.fromId || !selection.toId) {
@@ -143,20 +149,22 @@ export default function SendReportDialog({ open, onClose }) {
         }
         setSending(true)
         try {
-            const result = await sendWhatsAppReportAction(selection.fromId, selection.toId)
+            const result = await sendWhatsAppReportAction(selection.fromId, selection.toId, mode)
             if (result.success) {
                 const url = result.data?.whatsappUrl
-                toast.success('Zeitraum gebucht — WhatsApp öffnet sich, dort nur noch auf Senden tippen. 📲')
+                toast.success(mode === 'test'
+                    ? 'Test-Link erzeugt — NICHT abgerechnet. 🧪'
+                    : 'Zeitraum gebucht — WhatsApp öffnet sich, dort nur noch auf Senden tippen. 📲')
                 if (url) {
                     const win = window.open(url, '_blank')
                     if (win) {
                         win.opener = null
-                        onClose()
+                        if (mode !== 'test') onClose()
                     } else {
                         // Popup-Blocker: Link im Dialog anbieten
                         setPendingWhatsAppUrl(url)
                     }
-                } else {
+                } else if (mode !== 'test') {
                     onClose()
                 }
             } else {
@@ -442,7 +450,16 @@ export default function SendReportDialog({ open, onClose }) {
                         flexWrap: 'wrap'
                     }}>
                         <button
-                            onClick={handleSendWhatsApp}
+                            onClick={() => handleSendWhatsApp('test')}
+                            disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
+                            className="btn btn-outline"
+                            style={{ flex: '1 1 140px', fontSize: '0.9rem' }}
+                            title="Sendet an dich selbst, ohne die Periode abzurechnen"
+                        >
+                            {sending ? '...' : '🧪 Test-Send'}
+                        </button>
+                        <button
+                            onClick={() => handleSendWhatsApp('send')}
                             disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
                             className="btn"
                             style={{
@@ -462,7 +479,7 @@ export default function SendReportDialog({ open, onClose }) {
                             ) : '📲 Per WhatsApp senden'}
                         </button>
                         <button
-                            onClick={handleSend}
+                            onClick={() => handleSend('send')}
                             disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
                             className="btn"
                             style={{

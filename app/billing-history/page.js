@@ -1,6 +1,7 @@
 import prisma from "@/lib/db"
 import Link from "next/link"
 import PdfDownloadButton from "../components/PdfDownloadButton"
+import ResetPeriodButton from "./ResetPeriodButton"
 
 export const dynamic = 'force-dynamic'
 
@@ -106,7 +107,13 @@ export default async function BillingHistoryPage() {
                                             </span>
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap' }}>
-                                            <PdfDownloadButton billPeriod={bp} />
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                <PdfDownloadButton billPeriod={bp} />
+                                                <ResetPeriodButton
+                                                    billPeriodId={bp.id}
+                                                    periodLabel={`${new Date(bp.fromDate).toLocaleDateString('de-DE')} → ${new Date(bp.toDate).toLocaleDateString('de-DE')}`}
+                                                />
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

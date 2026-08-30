@@ -259,8 +259,9 @@ export async function getReportPreviewAction(fromId, toId) {
 
 /**
  * Sende einen benutzerdefinierten Telegram-Report mit Billing-Tracking
+ * mode='test': Report wird gesendet, aber NICHT als abgerechnet gebucht
  */
-export async function sendCustomTelegramReport(fromId, toId) {
+export async function sendCustomTelegramReport(fromId, toId, mode = 'send') {
     const session = await getServerSession(authOptions)
     if (!session) return { success: false, error: 'Nicht eingeloggt' }
 
@@ -269,6 +270,14 @@ export async function sendCustomTelegramReport(fromId, toId) {
 
     const { fromReading, toReading, calc, message } = payload
     const { total: totalCost, energyCost, baseFeeCost, billingMonths, diffHT, diffNT } = calc
+
+    // Test-Modus: Nur senden, keine Buchung
+    if (mode === 'test') {
+        const sendResult = await sendTelegramMessage(message + '\\n\\n⚠️ TEST — nicht abgerechnet')
+        if (!sendResult.success) return sendResult
+        revalidatePath('/')
+        return { success: true, testMode: true }
+    }
 
     // 5. Send to Telegram
     const sendResult = await sendTelegramMessage(message)
@@ -309,8 +318,9 @@ export async function sendCustomTelegramReport(fromId, toId) {
  * Bucht die Periode (sentVia='whatsapp') und liefert den fertigen
  * wa.me-Link zurück. Der Client öffnet ihn — WhatsApp erscheint mit
  * vorgefülltem Text; der User tippt nur noch "Senden".
+ * mode='test': Link wird erzeugt/geöffnet, aber NICHT gebucht
  */
-export async function sendWhatsAppReportAction(fromId, toId) {
+export async function sendWhatsAppReportAction(fromId, toId, mode = 'send') {
     const session = await getServerSession(authOptions)
     if (!session) return { success: false, error: 'Nicht eingeloggt' }
 
@@ -331,7 +341,7 @@ export async function sendWhatsAppReportAction(fromId, toId) {
         }
     }
 
-    const urlResult = buildWhatsAppUrl(normalized, message)
+    const urlResult = buildWhatsAppUrl(normalized, message + (mode === 'test' ? '\\n\\n⚠️ TEST — nicht abgerechnet' : ''))
     if (!urlResult.ok) {
         return { success: false, error: urlResult.error }
     }
@@ -339,34 +349,68 @@ export async function sendWhatsAppReportAction(fromId, toId) {
     // Booking VOR dem Öffnen des Links: Der Klick öffnet WhatsApp, aber ob der
     // User dort wirklich "Senden" tippt, sieht die App nicht. Ohne Booking
     // hätten wir doppelte Risiko-Läufe (Doppel-Abrechnung). Bewusst so.
-    try {
-        await createBillPeriod({
-            fromId,
-            toId,
-            totalCost: calc.total,
-            energyCost: calc.energyCost,
-            baseFeeCost: calc.baseFeeCost,
-            billingMonths: calc.billingMonths,
-            diffHT: calc.diffHT,
-            diffNT: calc.diffNT,
-            sentVia: 'whatsapp',
-            fromReading,
-            toReading
-        })
-    } catch (e) {
-        console.error('createBillPeriod error:', e)
-        return { success: false, error: 'Berechnung OK, aber Billing-Tracking fehlgeschlagen.' }
+    if (mode !== 'test') {
+        try {
+            await createBillPeriod({
+                fromId,
+                toId,
+                totalCost: calc.total,
+                energyCost: calc.energyCost,
+                baseFeeCost: calc.baseFeeCost,
+                billingMonths: calc.billingMonths,
+                diffHT: calc.diffHT,
+                diffNT: calc.diffNT,
+                sentVia: 'whatsapp',
+                fromReading,
+                toReading
+            })
+        } catch (e) {
+            console.error('createBillPeriod error:', e)
+            return { success: false, error: 'Berechnung OK, aber Billing-Tracking fehlgeschlagen.' }
+        }
     }
 
     revalidatePath('/')
-    revalidatePath('/billing-history')
+    if (mode !== 'test') revalidatePath('/billing-history')
 
     return {
         success: true,
         data: {
             whatsappUrl: urlResult.url,
             formattedNumber: formatWhatsAppNumber(normalized)
-        }
+        },
+        testMode: mode === 'test'
+    }
+}
+
+/**
+ * BillPeriod zuruecksetzen: Periode loeschen und alle zugehoerigen Readings
+ * wieder auf "offen" (billedAt=null) setzen. Fuer Testfaelle/Fehlbuchungen.
+ */
+export async function resetBillPeriodAction(billPeriodId) {
+    const session = await getServerSession(authOptions)
+    if (!session) return { success: false, error: 'Nicht eingeloggt' }
+
+    try {
+        // 1. Readings der Periode auf offen setzen
+        const updated = await prisma.reading.updateMany({
+            where: { billPeriodId: billPeriodId },
+            data: { billedAt: null, billPeriodId: null }
+        })
+
+        // 2. Periode loeschen
+        await prisma.billPeriod.delete({
+            where: { id: billPeriodId }
+        })
+
+        revalidatePath('/')
+        revalidatePath('/billing-history')
+        revalidatePath('/readings')
+
+        return { success: true, readingsReset: updated.count }
+    } catch (e) {
+        console.error('resetBillPeriod error:', e)
+        return { success: false, error: 'Zuruecksetzen fehlgeschlagen: ' + (e.message || 'unbekannter Fehler') }
     }
 }
 
