@@ -36,6 +36,19 @@ export default function SendReportDialog({ open, onClose }) {
     // Fallback-Link, falls der Browser window.open blockt
     const [pendingWhatsAppUrl, setPendingWhatsAppUrl] = useState(null)
 
+    // iOS: Hintergrund-Scroll sperren, solange der Dialog offen ist — sonst
+    // scrollt Safari die glass-cards visuell ÜBER das fixed Overlay.
+    useEffect(() => {
+        if (!open) return
+        const { overflow, touchAction } = document.body.style
+        document.body.style.overflow = 'hidden'
+        document.body.style.touchAction = 'none'
+        return () => {
+            document.body.style.overflow = overflow
+            document.body.style.touchAction = touchAction
+        }
+    }, [open])
+
     useEffect(() => {
         if (open) {
             loadPeriods()
@@ -190,13 +203,17 @@ export default function SendReportDialog({ open, onClose }) {
             alignItems: 'center',
             justifyContent: 'center',
             padding: 'max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left))',
-            zIndex: 1000,
-            animation: 'fadeInUp 0.2s ease-out'
+            zIndex: 9999,
+            // iOS Safari: backdrop-filter-Karten (.glass-card) erzeugen eigene
+            // Stacking-Contexte und können ohne isolate+translateZ ÜBER das fixed
+            // Overlay compositen — Dialog absichtlich isoliert + eigener Layer.
+            isolation: 'isolate',
+            transform: 'translateZ(0)'
         }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
             <div style={{
                 maxWidth: '480px',
                 width: 'min(100%, 480px)',
-                maxHeight: 'min(88vh, 720px)',
+                maxHeight: 'min(88dvh, 720px)',
                 background: 'rgba(17, 24, 39, 0.95)',
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
