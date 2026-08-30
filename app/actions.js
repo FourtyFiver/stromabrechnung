@@ -273,7 +273,7 @@ export async function sendCustomTelegramReport(fromId, toId, mode = 'send') {
 
     // Test-Modus: Nur senden, keine Buchung
     if (mode === 'test') {
-        const sendResult = await sendTelegramMessage(message + '\\n\\n⚠️ TEST — nicht abgerechnet')
+        const sendResult = await sendTelegramMessage(message + '\n\n⚠️ TEST — nicht abgerechnet')
         if (!sendResult.success) return sendResult
         revalidatePath('/')
         return { success: true, testMode: true }
@@ -341,7 +341,7 @@ export async function sendWhatsAppReportAction(fromId, toId, mode = 'send') {
         }
     }
 
-    const urlResult = buildWhatsAppUrl(normalized, message + (mode === 'test' ? '\\n\\n⚠️ TEST — nicht abgerechnet' : ''))
+    const urlResult = buildWhatsAppUrl(normalized, message + (mode === 'test' ? '\n\n⚠️ TEST — nicht abgerechnet' : ''))
     if (!urlResult.ok) {
         return { success: false, error: urlResult.error }
     }
