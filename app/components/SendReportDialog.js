@@ -464,8 +464,15 @@ export default function SendReportDialog({ open, onClose }) {
                         <button
                             onClick={handleSend}
                             disabled={sending || !getSelectedFromTo()?.fromId || !getSelectedFromTo()?.toId}
-                            className="btn btn-outline"
-                            style={{ flex: '1 1 180px' }}
+                            className="btn"
+                            style={{
+                                flex: '1 1 180px',
+                                background: 'linear-gradient(135deg, #2AABEE, #229ED9)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.45rem'
+                            }}
                         >
                             📤 Per Telegram senden
                         </button>
