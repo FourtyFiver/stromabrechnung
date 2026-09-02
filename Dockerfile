@@ -1,8 +1,8 @@
 FROM node:24-alpine AS base
 
-# npm-Update-Notice in Container-Logs deaktivieren (npx prisma@6 triggert sie bei jedem Start).
-# npm-Version kommt automatisch mit node:24-alpine Updates im nächsten Image-Build.
-ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+# npm auf aktuelle Major-Version (12.x), Node 24 bringt per Default npm 11 mit.
+# Wird bei jedem Build frisch installiert; Version explizit gepinnt fuer reproduzierbare Builds.
+RUN npm install -g npm@12.0.2
 
 # Install dependencies only when needed
 FROM base AS deps
