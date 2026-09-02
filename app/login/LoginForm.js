@@ -9,13 +9,18 @@ export default function LoginForm({ ssoEnabled }) {
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
 
-    // Auto-SSO: ?sso=1 (z.B. Launch URL in Authentik) startet direkt den OIDC-Flow.
-    // Kein Loop-Risiko: Bei Fehler kommt man ohne den Parameter zurueck (/login?error=authentik).
-    // callbackUrl "/" -> nach erfolgreichem SSO-Login direkt aufs Dashboard.
+    // Auto-SSO. Trigger:
+    //   1. ?sso=1 (explizite Launch URL)
+    //   2. ?callbackUrl=... (Middleware-Redirect beim Klick auf die Authentik-Kachel,
+    //      die auf / zeigt) — ohne eigene Session landet man so direkt im SSO-Flow.
+    // Kein Loop: Bei OIDC-Fehler kommt /login?error=... zurück — kein Auto-SSO,
+    // das Credentials-Formular bleibt sichtbar.
     useEffect(() => {
         if (!ssoEnabled) return
         const params = new URLSearchParams(window.location.search)
-        if (params.get("sso") === "1") {
+        const hasError = params.has("error")
+        const viaKachel = params.has("callbackUrl")
+        if (params.get("sso") === "1" || (viaKachel && !hasError)) {
             signIn("authentik", { callbackUrl: "/" })
         }
     }, [ssoEnabled])
