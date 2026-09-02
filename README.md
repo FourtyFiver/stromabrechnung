@@ -71,6 +71,12 @@ Nachrichten werden per **Click-to-Chat** geöffnet: Die App baut den fertigen Li
 
 Neben dem lokalen Credentials-Login (Admin-Fallback) unterstützt die App OIDC-Login via Authentik. Sind die drei `AUTHENTIK_*`-Variablen in der `.env` gesetzt, erscheint auf der Login-Seite zusätzlich der Button **„Mit Authentik anmelden"**. Ohne die Variablen bleibt das Verhalten unverändert.
 
+**Verhalten nach Einrichtung:**
+- **Klick auf die App-Kachel in Authentik** → automatische Weiterleitung in den SSO-Flow. Bei bestehender Authentik-Session landet man ohne weiteren Klick im Dashboard.
+- **Direkter Aufruf der App** → Login-Seite mit beiden Optionen (Formular + SSO-Button).
+- **Auto-SSO deaktiviert sich selbst**, wenn ein OIDC-Fehler zurückkommt (`/login?error=...`) — das Credentials-Formular bleibt dann sichtbar (kein Redirect-Loop).
+- Optional kann die Launch URL in Authentik explizit auf `<app-url>/login?sso=1` gesetzt werden — das Verhalten ist identisch zum Kachel-Klick.
+
 ### Authentik-Seite (einmalig einrichten)
 
 1. **Admin-Interface → Applications → Applications → Create**
@@ -80,7 +86,8 @@ Neben dem lokalen Credentials-Login (Admin-Fallback) unterstützt die App OIDC-L
    - **Redirect URI** (Strict): `https://stromapp.homenetworkx.de/api/auth/callback/authentik`
    - Signing Key: beliebig (empfohlen: `authentik Self-signed Certificate`)
    - Authorization Flow: `default-provider-authorization-implicit-consent`
-5. Nach dem Anlegen: **Client ID** und **Client Secret** aus dem Provider kopieren
+5. Launch URL der Application: Standard (`https://stromapp.homenetworkx.de/` oder leer) — der Kachel-Klick funktioniert dank Auto-SSO direkt
+6. Nach dem Anlegen: **Client ID** und **Client Secret** aus dem Provider kopieren
 
 ### App-seitige `.env`
 
