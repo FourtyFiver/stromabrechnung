@@ -86,6 +86,22 @@ export default function LoginPage() {
                         ) : 'Einloggen'}
                     </button>
                 </form>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0' }}>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                    <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>oder</span>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                </div>
+
+                <button
+                    type="button"
+                    className="btn btn-outline"
+                    style={{ width: '100%', padding: '0.8rem' }}
+                    onClick={() => signIn("authentik", { callbackUrl: "/" })}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" x2="3" y1="12" y2="12" /></svg>
+                    Mit Authentik anmelden
+                </button>
             </div>
         </div>
     )

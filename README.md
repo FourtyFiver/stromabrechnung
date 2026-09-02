@@ -67,6 +67,33 @@ Nachrichten werden per **Click-to-Chat** geöffnet: Die App baut den fertigen Li
 - Auf iOS fragt Safari vor dem Öffnen „In WhatsApp öffnen?" — das ist Standard und korrekt.
 - **Buchung vs. Senden:** Die **Buchung** der Periode passiert server-seitig bereits beim Klick auf „Per WhatsApp senden" — vor dem Öffnen der App. WhatsApp ist nur der Transport. Wird der Versand in WhatsApp abgebrochen, lässt sich die Buchung über den 🔄 Reset-Button in der Abrechnungs-Historie zurücknehmen (siehe Troubleshooting).
 
+## 🔐 Authentik SSO (Optional)
+
+Neben dem lokalen Credentials-Login (Admin-Fallback) unterstützt die App OIDC-Login via Authentik. Sind die drei `AUTHENTIK_*`-Variablen in der `.env` gesetzt, erscheint auf der Login-Seite zusätzlich der Button **„Mit Authentik anmelden"**. Ohne die Variablen bleibt das Verhalten unverändert.
+
+### Authentik-Seite (einmalig einrichten)
+
+1. **Admin-Interface → Applications → Applications → Create**
+2. Name: `StromApp`, Slug: `stromapp`
+3. Provider-Typ: **OAuth2/OpenID Connect** (confidential)
+4. Provider konfigurieren:
+   - **Redirect URI** (Strict): `https://stromapp.homenetworkx.de/api/auth/callback/authentik`
+   - Signing Key: beliebig (empfohlen: `authentik Self-signed Certificate`)
+   - Authorization Flow: `default-provider-authorization-implicit-consent`
+5. Nach dem Anlegen: **Client ID** und **Client Secret** aus dem Provider kopieren
+
+### App-seitige `.env`
+
+```ini
+AUTHENTIK_ID=<Client ID aus Authentik>
+AUTHENTIK_SECRET=<Client Secret aus Authentik>
+AUTHENTIK_ISSUER=https://authentik.homenetworkx.de/application/o/stromapp
+```
+
+**Wichtig:** Issuer **ohne** trailing slash — NextAuth hängt `/.well-known/openid-configuration` selbst an.
+
+Anschließend `docker compose pull && docker compose up -d` (bzw. Neustart der App).
+
 ## ❓ Troubleshooting & Hinweise
 
 - **Altes Verhalten nach App-Update?** iOS Safari hält alte JS-Bundles hart im Cache. Nach jedem `docker compose pull && docker compose up -d` Safari **komplett schließen** (App-Switcher, Safari wegswipen) und neu öffnen.

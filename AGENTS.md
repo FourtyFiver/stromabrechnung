@@ -38,6 +38,7 @@ Kurzleitfaden fuer Coding-Agents in diesem Repository. Fuer Details zuerst [CLAU
 
 - Wichtige Env-Variablen: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`.
 - Optionale Telegram-Variablen: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+- Optionale Authentik-SSO-Variablen: `AUTHENTIK_ID`, `AUTHENTIK_SECRET`, `AUTHENTIK_ISSUER` (alle drei gesetzt → SSO-Button aktiv; Issuer ohne trailing slash).
 - Schema-Aenderungen laufen ueber `prisma db push`; dieses Repo arbeitet bewusst ohne Prisma-Migrationsworkflow.
 
 ## Referenzen
