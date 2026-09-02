@@ -1,13 +1,23 @@
 'use client'
 
 import { signIn } from "next-auth/react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 export default function LoginForm({ ssoEnabled }) {
     const router = useRouter()
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
+
+    // Auto-SSO: ?sso=1 (z.B. Launch URL in Authentik) startet direkt den OIDC-Flow.
+    // Kein Loop-Risiko: Bei Fehler kommt man ohne den Parameter zurueck (/login?error=authentik).
+    useEffect(() => {
+        if (!ssoEnabled) return
+        const params = new URLSearchParams(window.location.search)
+        if (params.get("sso") === "1") {
+            signIn("authentik", { callbackUrl: "/" })
+        }
+    }, [ssoEnabled])
 
     async function handleSubmit(e) {
         e.preventDefault()
