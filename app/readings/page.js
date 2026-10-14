@@ -1,13 +1,30 @@
 import prisma from "@/lib/db"
 import ReadingsForm from "./ReadingsForm"
-import DeleteReadingButton from "./DeleteReadingButton"
+import ReadingRow from "./ReadingRow"
+import { ACTION_LABELS, describeChange } from "@/lib/reading-history"
 
 export const dynamic = 'force-dynamic'
 
 export default async function ReadingsPage() {
-    const readings = await prisma.reading.findMany({
-        orderBy: { date: 'desc' }
-    })
+    const [readings, changes, periods] = await Promise.all([
+        prisma.reading.findMany({ orderBy: [{ date: 'desc' }, { id: 'desc' }] }),
+        prisma.readingChange.findMany({ orderBy: { changedAt: 'desc' }, take: 50 }),
+        prisma.billPeriod.findMany({ select: { fromReadingId: true, toReadingId: true } })
+    ])
+    // Von einer Abrechnung referenzierte Stände sind gesperrt (Bearbeiten/Löschen)
+    const referenced = new Set(periods.flatMap((p) => [p.fromReadingId, p.toReadingId]))
+    const rows = readings.map((r) => ({
+        id: r.id,
+        date: r.date.toISOString(),
+        valueHT: r.valueHT,
+        valueNT: r.valueNT,
+        comment: r.comment,
+        billed: Boolean(r.billedAt),
+        locked: Boolean(r.billedAt) || referenced.has(r.id),
+        meterChange: r.meterChange,
+        oldFinalHT: r.oldFinalHT,
+        oldFinalNT: r.oldFinalNT
+    }))
 
     return (
         <div>
@@ -43,28 +60,39 @@ export default async function ReadingsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {readings.map((reading) => (
-                                    <tr key={reading.id}>
-                                        <td style={{ fontWeight: 500 }}>{reading.date.toLocaleDateString('de-DE')}</td>
-                                        <td>{reading.valueHT.toLocaleString('de-DE')} kWh</td>
-                                        <td>{reading.valueNT.toLocaleString('de-DE')} kWh</td>
-                                        <td>
-                                            {reading.billedAt ? (
-                                                <span className="badge badge-success">✓ Abgerechnet</span>
-                                            ) : (
-                                                <span className="badge badge-warning">Offen</span>
-                                            )}
-                                        </td>
-                                        <td style={{ color: 'var(--text-dim)' }}>{reading.comment || '—'}</td>
-                                        <td>
-                                            <DeleteReadingButton id={reading.id} />
-                                        </td>
-                                    </tr>
+                                {rows.map((reading) => (
+                                    <ReadingRow key={reading.id} reading={reading} />
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 )}
+            </div>
+
+            <div className="glass-card" style={{ marginTop: '1.25rem' }}>
+                <details>
+                    <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Änderungshistorie ({changes.length})</summary>
+                    {changes.length === 0 ? (
+                        <p style={{ color: 'var(--text-dim)' }}>Noch keine Änderungen aufgezeichnet.</p>
+                    ) : (
+                        <div className="table-wrapper" style={{ marginTop: '0.75rem' }}>
+                            <table>
+                                <thead>
+                                    <tr><th>Zeitpunkt</th><th>Aktion</th><th>Details</th></tr>
+                                </thead>
+                                <tbody>
+                                    {changes.map((c) => (
+                                        <tr key={c.id}>
+                                            <td style={{ whiteSpace: 'nowrap' }}>{c.changedAt.toLocaleString('de-DE')}</td>
+                                            <td>{ACTION_LABELS[c.action] || c.action}</td>
+                                            <td style={{ color: 'var(--text-dim)' }}>{describeChange(c)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </details>
             </div>
         </div>
     )

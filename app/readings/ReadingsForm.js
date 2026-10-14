@@ -1,22 +1,45 @@
 'use client'
 
-import { useRef } from 'react'
-import { addReading } from "@/app/actions"
+import { useState } from 'react'
+import { addReading, updateReading } from "@/app/actions"
 import { SubmitButton } from "@/app/components/SubmitButton"
 import { toast } from "sonner"
 
-export default function ReadingsForm() {
-    const formRef = useRef(null)
+// reading: optional, dann Bearbeiten-Modus (vorbefüllt); onDone wird nach Erfolg/Abbrechen gerufen
+function todayLocal() {
+    const d = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+export default function ReadingsForm({ reading = null, onDone = null }) {
+    const isEdit = Boolean(reading)
+    const str = (v) => (v === null || v === undefined ? '' : String(v))
+    const initial = () => ({
+        date: isEdit ? new Date(reading.date).toISOString().split('T')[0] : todayLocal(),
+        valueHT: str(reading?.valueHT),
+        valueNT: str(reading?.valueNT),
+        oldFinalHT: str(reading?.oldFinalHT),
+        oldFinalNT: str(reading?.oldFinalNT),
+        comment: reading?.comment ?? ''
+    })
+    // Kontrollierte Felder: Eingaben bleiben nach einem Server-Fehler erhalten (React setzt
+    // das Formular nach einer Action zurück) und werden nur bei Erfolg geleert.
+    const [values, setValues] = useState(initial)
+    const [meterChange, setMeterChange] = useState(Boolean(reading?.meterChange))
+    const bind = (name) => ({ name, value: values[name], onChange: (e) => setValues((v) => ({ ...v, [name]: e.target.value })) })
 
     async function clientAction(formData) {
         try {
-            const result = await addReading(formData)
+            const result = isEdit ? await updateReading(reading.id, formData) : await addReading(formData)
             if (result && result.success) {
-                toast.success('Zählerstand gespeichert! 📈')
-                formRef.current?.reset()
-                // Reset date to today after submit if needed, or keep blank. 
-                // Creating a new Date string again for manual reset might be needed if we want to keep it filled.
-                // For now, simple reset is fine.
+                toast.success(isEdit ? 'Zählerstand aktualisiert! ✏️' : 'Zählerstand gespeichert! 📈')
+                if (isEdit) {
+                    onDone?.()
+                    return
+                }
+                setValues({ ...initial(), date: todayLocal() })
+                setMeterChange(false)
             } else if (result && result.error) {
                 toast.error('Fehler: ' + result.error)
             }
@@ -26,25 +49,49 @@ export default function ReadingsForm() {
     }
 
     return (
-        <form ref={formRef} action={clientAction} className="responsive-form-grid">
+        <form action={clientAction} className="responsive-form-grid">
             <div className="input-group">
                 <label>Datum</label>
-                <input type="date" name="date" className="input-field" required defaultValue={new Date().toISOString().split('T')[0]} />
+                <input type="date" {...bind('date')} className="input-field" required />
             </div>
             <div className="input-group">
                 <label>HT Zählerstand (kWh)</label>
-                <input type="number" step="0.1" name="valueHT" className="input-field" required />
+                <input type="number" step="0.1" {...bind('valueHT')} className="input-field" required />
             </div>
             <div className="input-group">
                 <label>NT Zählerstand (kWh)</label>
-                <input type="number" step="0.1" name="valueNT" className="input-field" required />
+                <input type="number" step="0.1" {...bind('valueNT')} className="input-field" required />
             </div>
+            <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input type="checkbox" name="meterChange" checked={meterChange} onChange={(e) => setMeterChange(e.target.checked)} />
+                    Zählertausch
+                </label>
+            </div>
+            {meterChange && (
+                <>
+                    <div className="input-group">
+                        <label>Endstand alter Zähler HT (kWh)</label>
+                        <input type="number" step="0.1" min="0" {...bind('oldFinalHT')} className="input-field" required />
+                    </div>
+                    <div className="input-group">
+                        <label>Endstand alter Zähler NT (kWh)</label>
+                        <input type="number" step="0.1" min="0" {...bind('oldFinalNT')} className="input-field" required />
+                    </div>
+                    <div className="input-group" style={{ gridColumn: '1 / -1', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        Die Felder oben (HT/NT Zählerstand) sind bei einem Zählertausch die Startwerte des neuen Zählers.
+                    </div>
+                </>
+            )}
             <div className="input-group">
                 <label>Kommentar</label>
-                <input type="text" name="comment" className="input-field" />
+                <input type="text" {...bind('comment')} className="input-field" />
             </div>
             <div className="input-group">
-                <SubmitButton className="btn" style={{ width: '100%' }}>Eintragen</SubmitButton>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <SubmitButton className="btn" style={{ width: '100%' }}>{isEdit ? 'Speichern' : 'Eintragen'}</SubmitButton>
+                    {isEdit && <button type="button" className="btn btn-outline" onClick={() => onDone?.()}>Abbrechen</button>}
+                </div>
             </div>
         </form>
     )

@@ -31,8 +31,26 @@ model Reading {
   billedAt      DateTime?
   billPeriodId  String?
   billingNote   String?
+  // Zählertausch: valueHT/valueNT sind dann die Startwerte des NEUEN Zählers,
+  // oldFinalHT/oldFinalNT der Endstand des ALTEN Zählers
+  meterChange   Boolean   @default(false)
+  oldFinalHT    Float?
+  oldFinalNT    Float?
 
   @@index([billedAt])
+}
+
+// Änderungshistorie; bewusst ohne FK, damit Einträge gelöschter Readings erhalten bleiben
+model ReadingChange {
+  id        String   @id @default(cuid())
+  readingId String
+  changedAt DateTime @default(now())
+  action    String   // 'create' | 'update' | 'delete'
+  before    String?
+  after     String?
+
+  @@index([changedAt(sort: Desc)])
+  @@index([readingId])
 }
 
 model BillPeriod {

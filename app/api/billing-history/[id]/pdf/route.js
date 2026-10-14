@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { generateBillingPDFBuffer } from '@/lib/pdf-generator'
-import { findRelevantPrice } from '@/lib/pricing'
+import { findRelevantPrice, NO_PRICE_ERROR } from '@/lib/pricing'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,7 +91,7 @@ export async function GET(_request, context) {
 
         const relevantPrice = findRelevantPrice(allPrices, billPeriod.toDate)
         if (!relevantPrice) {
-            return new Response('Kein Strompreis fuer die Abrechnung gefunden', { status: 404 })
+            return new Response(NO_PRICE_ERROR, { status: 404 })
         }
 
         const pdfBuffer = await generateBillingPDFBuffer(buildPdfPayload(billPeriod, fromReading, toReading, relevantPrice))

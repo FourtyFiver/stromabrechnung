@@ -2,27 +2,31 @@ import prisma from "@/lib/db"
 import Link from "next/link"
 import ConsumptionChart from "./components/ConsumptionChart"
 import SendReportButton from "./components/SendReportButton"
-import { calculatePeriodCost } from "@/lib/billing"
-import { findRelevantPrice } from "@/lib/pricing"
+import DashboardInsights from "./components/DashboardInsights"
+import ExportLinks from "./components/ExportLinks"
+import { yearOverYear, projectAnnual } from "@/lib/stats"
+import { calculatePeriodCost, calculateConsumption, getOpenReadings } from "@/lib/billing"
+import { findRelevantPrice, NO_PRICE_ERROR } from "@/lib/pricing"
 
 export const dynamic = 'force-dynamic'
 
 async function getDashboardData() {
     // Run all 3 queries in parallel instead of sequentially
     const [readings, latestBillPeriod, allPrices] = await Promise.all([
-        prisma.reading.findMany({ orderBy: { date: 'asc' } }),
+        prisma.reading.findMany({ orderBy: [{ date: 'asc' }, { id: 'asc' }] }),
         prisma.billPeriod.findFirst({ orderBy: { sentAt: 'desc' } }),
         prisma.priceConfig.findMany({ orderBy: { validFrom: 'desc' } })
     ])
 
     // Count unbilled readings
-    const unbilledCount = readings.filter(r => !r.billedAt).length
+    const unbilledCount = getOpenReadings(readings).open.length
 
     // Calculate costs and prepare chart data
     let lastPeriodCost = latestBillPeriod?.totalCost || 0
     let lastPeriodBaseFee = latestBillPeriod?.baseFeeCost || 0
     let lastPeriodMonths = latestBillPeriod?.billingMonths || 0
     let chartData = []
+    let priceWarning = null
 
     if (readings.length >= 2 && allPrices.length > 0) {
         for (let i = 1; i < readings.length; i++) {
@@ -30,7 +34,10 @@ async function getDashboardData() {
             const curr = readings[i]
 
             const relevantPrice = findRelevantPrice(allPrices, curr.date)
-            if (!relevantPrice) continue
+            if (!relevantPrice) {
+                priceWarning = NO_PRICE_ERROR
+                continue
+            }
 
             const result = calculatePeriodCost(prev, curr, relevantPrice)
             if (!result) continue
@@ -55,7 +62,7 @@ async function getDashboardData() {
     }
 
     const latestReading = readings[readings.length - 1]
-    const currentPrice = allPrices[0]
+    const currentPrice = findRelevantPrice(allPrices, new Date())
 
     // Calculate estimated costs for the open (unbilled) period
     let openPeriodEstimate = null
@@ -67,8 +74,10 @@ async function getDashboardData() {
         // Make sure the newest unbilled is after the last billed reading
         if (newestUnbilled.date > fromReading.date) {
             const priceForPeriod = findRelevantPrice(allPrices, newestUnbilled.date)
-            if (priceForPeriod) {
-                const result = calculatePeriodCost(fromReading, newestUnbilled, priceForPeriod)
+            if (!priceForPeriod) {
+                priceWarning = NO_PRICE_ERROR
+            } else {
+                const result = calculatePeriodCost(fromReading, newestUnbilled, priceForPeriod, readings)
                 if (result) {
                     openPeriodEstimate = {
                         ...result,
@@ -84,11 +93,20 @@ async function getDashboardData() {
     let totalHT = 0
     let totalNT = 0
     if (readings.length >= 2) {
-        totalHT = readings[readings.length - 1].valueHT - readings[0].valueHT
-        totalNT = readings[readings.length - 1].valueNT - readings[0].valueNT
+        const total = calculateConsumption(readings[0], readings[readings.length - 1], readings)
+        if (total) {
+            totalHT = total.diffHT
+            totalNT = total.diffNT
+        }
     }
 
+    const now = new Date()
+    const yoy = yearOverYear(readings, allPrices, now)
+    const projection = projectAnnual(readings, allPrices, now)
+
     return {
+        yoy,
+        projection,
         latestReading,
         readingsCount: readings.length,
         unbilledCount,
@@ -99,7 +117,8 @@ async function getDashboardData() {
         openPeriodEstimate,
         totalHT,
         totalNT,
-        chartData
+        chartData,
+        priceWarning
     }
 }
 
@@ -109,6 +128,12 @@ export default async function Home() {
     return (
         <div>
             <h1>Dashboard</h1>
+
+            {data.priceWarning && (
+                <div className="glass-card" style={{ marginBottom: '1.25rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--danger, #ef4444)' }}>
+                    {data.priceWarning}
+                </div>
+            )}
 
             <div className="stats-grid">
                 {/* Kosten Card */}
@@ -221,6 +246,8 @@ export default async function Home() {
                 </div>
             )}
 
+            <DashboardInsights yoy={data.yoy} projection={data.projection} />
+
             {/* Chart */}
             {data.chartData && data.chartData.length > 0 && (
                 <div className="glass-card" style={{ marginBottom: '1.25rem' }}>
@@ -245,6 +272,7 @@ export default async function Home() {
                         <Link href="/settings" className="btn btn-outline" style={{ textAlign: 'center' }}>
                             Einstellungen
                         </Link>
+                        <ExportLinks showReadings />
                     </div>
                 </div>
 

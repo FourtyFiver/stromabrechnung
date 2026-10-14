@@ -2,6 +2,7 @@ import prisma from "@/lib/db"
 import Link from "next/link"
 import PdfDownloadButton from "../components/PdfDownloadButton"
 import ResetPeriodButton from "./ResetPeriodButton"
+import ExportLinks from "../components/ExportLinks"
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,9 @@ export default async function BillingHistoryPage() {
 
     // Summary stats
     const totalBilled = history.reduce((sum, bp) => sum + bp.totalCost, 0)
+
+    // Nur die zuletzt erstellte Periode darf zurückgesetzt werden (gleiche Sortierung wie resetBillPeriodAction)
+    const latestPeriodId = [...history].sort((a, b) => (b.toDate - a.toDate) || (b.sentAt - a.sentAt))[0]?.id
 
     // Serialize dates for client components
     const serializedHistory = history.map(bp => ({
@@ -49,6 +53,12 @@ export default async function BillingHistoryPage() {
                             {history[0].sentAt.toLocaleDateString('de-DE')}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {history.length > 0 && (
+                <div style={{ marginBottom: '1.25rem' }}>
+                    <ExportLinks years={[...new Set(history.map(bp => bp.toDate.getFullYear()))].sort((a, b) => b - a)} />
                 </div>
             )}
 
@@ -109,10 +119,12 @@ export default async function BillingHistoryPage() {
                                         <td style={{ whiteSpace: 'nowrap' }}>
                                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                                 <PdfDownloadButton billPeriod={bp} />
-                                                <ResetPeriodButton
-                                                    billPeriodId={bp.id}
-                                                    periodLabel={`${new Date(bp.fromDate).toLocaleDateString('de-DE')} → ${new Date(bp.toDate).toLocaleDateString('de-DE')}`}
-                                                />
+                                                {bp.id === latestPeriodId && (
+                                                    <ResetPeriodButton
+                                                        billPeriodId={bp.id}
+                                                        periodLabel={`${new Date(bp.fromDate).toLocaleDateString('de-DE')} → ${new Date(bp.toDate).toLocaleDateString('de-DE')}`}
+                                                    />
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

@@ -7,12 +7,14 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { calculatePeriodCost } from "@/lib/billing"
 import { getAvailableBillingPeriods, validateBillingPeriod, createBillPeriod, getBillingHistory } from "@/lib/billing-status"
-import { findRelevantPrice } from "@/lib/pricing"
+import { findRelevantPrice, NO_PRICE_ERROR } from "@/lib/pricing"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { parseTelegramChatIds } from "@/lib/telegram-settings"
 import { getAppSettings, updateAppSettings } from "@/lib/app-settings"
 import { normalizeWhatsAppNumber, formatWhatsAppNumber, buildWhatsAppUrl, buildWhatsAppAppUrl } from "@/lib/whatsapp"
 import { formatReportMessage } from "@/lib/report-message"
+import { checkReadingNeighbours, checkSameDayMeterChange, checkAfterBilledPeriod } from "@/lib/reading-validation"
+import { snapshotReading } from "@/lib/reading-history"
 import { z } from "zod"
 
 const PriceConfigSchema = z.object({
@@ -25,9 +27,12 @@ const PriceConfigSchema = z.object({
 
 const ReadingSchema = z.object({
     date: z.coerce.date(),
-    valueHT: z.coerce.number().min(0, 'Zählerstand HT darf nicht negativ sein'),
-    valueNT: z.coerce.number().min(0, 'Zählerstand NT darf nicht negativ sein'),
-    comment: z.string().max(500).optional().default('')
+    valueHT: z.coerce.number({ message: 'Zählerstand HT muss angegeben werden' }).min(0, 'Zählerstand HT darf nicht negativ sein'),
+    valueNT: z.coerce.number({ message: 'Zählerstand NT muss angegeben werden' }).min(0, 'Zählerstand NT darf nicht negativ sein'),
+    comment: z.string().max(500).optional().default(''),
+    meterChange: z.boolean().default(false),
+    oldFinalHT: z.coerce.number().min(0, 'Endstand alter Zähler (HT) darf nicht negativ sein').optional(),
+    oldFinalNT: z.coerce.number().min(0, 'Endstand alter Zähler (NT) darf nicht negativ sein').optional()
 })
 
 export async function addPriceConfig(formData) {
@@ -68,55 +73,164 @@ export async function addPriceConfig(formData) {
     return { success: true }
 }
 
+// z.coerce.number() macht '' zu 0 – leere Eingaben müssen aber abgelehnt werden
+const emptyToUndefined = (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v)
+
+function parseReadingForm(formData) {
+    const validation = ReadingSchema.safeParse({
+        date: formData.get('date'),
+        valueHT: emptyToUndefined(formData.get('valueHT')),
+        valueNT: emptyToUndefined(formData.get('valueNT')),
+        comment: formData.get('comment') || '',
+        meterChange: formData.get('meterChange') === 'on',
+        oldFinalHT: formData.get('oldFinalHT') || undefined,
+        oldFinalNT: formData.get('oldFinalNT') || undefined
+    })
+    if (!validation.success) {
+        const firstError = Object.values(validation.error.flatten().fieldErrors).flat()[0]
+        return { error: firstError || 'Ungültige Eingabe' }
+    }
+    const data = validation.data
+    if (data.meterChange && (data.oldFinalHT === undefined || data.oldFinalNT === undefined)) {
+        return { error: 'Bei einem Zählertausch müssen die Endstände des alten Zählers (HT und NT) angegeben werden.' }
+    }
+    return { data }
+}
+
+// Rücklauf-Prüfung gegen die Nachbarn am Datum (nicht nur gegen den neuesten Stand);
+// excludeId schließt beim Bearbeiten den Eintrag selbst aus.
+async function checkAgainstNeighbours(data, excludeId = null) {
+    const notSelf = excludeId ? { id: { not: excludeId } } : {}
+    const [prev, next] = await Promise.all([
+        prisma.reading.findFirst({ where: { ...notSelf, date: { lte: data.date } }, orderBy: [{ date: 'desc' }, { id: 'desc' }] }),
+        prisma.reading.findFirst({ where: { ...notSelf, date: { gt: data.date } }, orderBy: [{ date: 'asc' }, { id: 'asc' }] })
+    ])
+    const warnings = checkReadingNeighbours({ ...data, prev, next })
+    if (warnings.length > 0) {
+        return `Zählerstand-Rücklauf erkannt: ${warnings.join('; ')}. Bitte überprüfen Sie die Eingabe.`
+    }
+    return null
+}
+
+// Datumsregeln: kein Stand am selben Tag neben einem Zählertausch; kein Stand im
+// bereits abgerechneten Zeitraum. excludeId schließt den bearbeiteten Eintrag aus.
+async function checkDateRules(data, excludeId = null) {
+    const notSelf = excludeId ? { id: { not: excludeId } } : {}
+    const dayStart = new Date(Date.UTC(data.date.getUTCFullYear(), data.date.getUTCMonth(), data.date.getUTCDate()))
+    const dayEnd = new Date(dayStart.getTime() + 86400000)
+    const [sameDay, lastPeriod, lastBilled] = await Promise.all([
+        prisma.reading.findMany({ where: { ...notSelf, date: { gte: dayStart, lt: dayEnd } } }),
+        prisma.billPeriod.findFirst({ orderBy: { toDate: 'desc' } }),
+        prisma.reading.findFirst({ where: { ...notSelf, billedAt: { not: null } }, orderBy: [{ date: 'desc' }, { id: 'desc' }] })
+    ])
+    const sameDayError = checkSameDayMeterChange({ date: data.date, meterChange: data.meterChange, others: sameDay })
+    if (sameDayError) return sameDayError
+    const dates = [lastPeriod?.toDate, lastBilled?.date].filter(Boolean).map((d) => d.getTime())
+    const lastBilledDate = dates.length ? new Date(Math.max(...dates)) : null
+    return checkAfterBilledPeriod({ date: data.date, lastBilledDate })
+}
+
+function readingFields({ date, valueHT, valueNT, comment, meterChange, oldFinalHT, oldFinalNT }) {
+    return {
+        date,
+        valueHT,
+        valueNT,
+        comment,
+        meterChange,
+        oldFinalHT: meterChange ? oldFinalHT : null,
+        oldFinalNT: meterChange ? oldFinalNT : null
+    }
+}
+
+const REFERENCED_ERROR = (verb) => `Dieser Zählerstand ist Start- oder Endpunkt einer Abrechnung und kann nicht ${verb} werden.`
+
+async function isReferencedByBillPeriod(id) {
+    const ref = await prisma.billPeriod.findFirst({
+        where: { OR: [{ fromReadingId: id }, { toReadingId: id }] },
+        select: { id: true }
+    })
+    return Boolean(ref)
+}
+
 export async function addReading(formData) {
     const session = await getServerSession(authOptions)
     if (!session) {
         return { success: false, error: 'Nicht authentifiziert' }
     }
 
-    const rawData = {
-        date: formData.get('date'),
-        valueHT: formData.get('valueHT'),
-        valueNT: formData.get('valueNT'),
-        comment: formData.get('comment') || ''
+    const parsed = parseReadingForm(formData)
+    if (parsed.error) return { success: false, error: parsed.error }
+
+    const dateError = await checkDateRules(parsed.data)
+    if (dateError) return { success: false, error: dateError }
+
+    const rollbackError = await checkAgainstNeighbours(parsed.data)
+    if (rollbackError) return { success: false, error: rollbackError }
+
+    try {
+        await prisma.$transaction(async (tx) => {
+            const created = await tx.reading.create({ data: readingFields(parsed.data) })
+            await tx.readingChange.create({
+                data: { readingId: created.id, action: 'create', after: snapshotReading(created) }
+            })
+        })
+    } catch (e) {
+        console.error('addReading error:', e)
+        return { success: false, error: 'Fehler beim Speichern' }
     }
 
-    const validation = ReadingSchema.safeParse(rawData)
-    if (!validation.success) {
-        const firstError = Object.values(validation.error.flatten().fieldErrors).flat()[0]
-        return { success: false, error: firstError || 'Ungültige Eingabe' }
+    revalidatePath('/')
+    revalidatePath('/readings')
+    return { success: true }
+}
+
+export async function updateReading(id, formData) {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+        return { success: false, error: 'Nicht authentifiziert' }
     }
 
-    const { date, valueHT, valueNT, comment } = validation.data
-
-    // Check for meter rollback: new reading should not be lower than the last one
-    const lastReading = await prisma.reading.findFirst({
-        orderBy: { date: 'desc' }
-    })
-    if (lastReading) {
-        const warnings = []
-        if (valueHT < lastReading.valueHT) {
-            warnings.push(`HT ${valueHT.toLocaleString('de-DE')} ist niedriger als letzter Stand (${lastReading.valueHT.toLocaleString('de-DE')} kWh)`)
-        }
-        if (valueNT < lastReading.valueNT) {
-            warnings.push(`NT ${valueNT.toLocaleString('de-DE')} ist niedriger als letzter Stand (${lastReading.valueNT.toLocaleString('de-DE')} kWh)`)
-        }
-        if (warnings.length > 0) {
-            return {
-                success: false,
-                error: `Zählerstand-Rücklauf erkannt: ${warnings.join('; ')}. Bitte überprüfen Sie die Eingabe.`
-            }
-        }
+    const existing = await prisma.reading.findUnique({ where: { id } })
+    if (!existing) {
+        return { success: false, error: 'Zählerstand nicht gefunden' }
+    }
+    if (existing.billedAt) {
+        return { success: false, error: 'Abgerechnete Zählerstände können nicht bearbeitet werden.' }
     }
 
-    await prisma.reading.create({
-        data: {
-            date,
-            valueHT,
-            valueNT,
-            comment
+    const parsed = parseReadingForm(formData)
+    if (parsed.error) return { success: false, error: parsed.error }
+
+    if (await isReferencedByBillPeriod(id)) {
+        return { success: false, error: REFERENCED_ERROR('bearbeitet') }
+    }
+
+    const dateError = await checkDateRules(parsed.data, id)
+    if (dateError) return { success: false, error: dateError }
+
+    const rollbackError = await checkAgainstNeighbours(parsed.data, id)
+    if (rollbackError) return { success: false, error: rollbackError }
+
+    try {
+        await prisma.$transaction(async (tx) => {
+            // billedAt: null im WHERE schützt vor Race mit einer parallelen Abrechnung
+            const res = await tx.reading.updateMany({
+                where: { id, billedAt: null },
+                data: readingFields(parsed.data)
+            })
+            if (res.count !== 1) throw new Error('BILLED')
+            const updated = await tx.reading.findUnique({ where: { id } })
+            await tx.readingChange.create({
+                data: { readingId: id, action: 'update', before: snapshotReading(existing), after: snapshotReading(updated) }
+            })
+        })
+    } catch (e) {
+        if (e.message === 'BILLED') {
+            return { success: false, error: 'Abgerechnete Zählerstände können nicht bearbeitet werden.' }
         }
-    })
+        console.error('updateReading error:', e)
+        return { success: false, error: 'Fehler beim Speichern' }
+    }
 
     revalidatePath('/')
     revalidatePath('/readings')
@@ -136,11 +250,17 @@ export async function deleteReading(id) {
     if (reading.billedAt) {
         return { success: false, error: 'Abgerechnete Zählerstände können nicht gelöscht werden.' }
     }
+    if (await isReferencedByBillPeriod(id)) {
+        return { success: false, error: REFERENCED_ERROR('gelöscht') }
+    }
 
     try {
-        await prisma.reading.delete({
-            where: { id }
-        })
+        await prisma.$transaction([
+            prisma.reading.delete({ where: { id } }),
+            prisma.readingChange.create({
+                data: { readingId: id, action: 'delete', before: snapshotReading(reading) }
+            })
+        ])
 
         revalidatePath('/')
         revalidatePath('/readings')
@@ -209,12 +329,18 @@ export async function buildReportPayload(fromId, toId) {
     const relevantPrice = findRelevantPrice(allPrices, toReading.date)
 
     if (!relevantPrice) {
-        return { success: false, error: 'Kein Strompreis gefunden.' }
+        return { success: false, error: NO_PRICE_ERROR }
     }
 
-    const calc = calculatePeriodCost(fromReading, toReading, relevantPrice)
+    // Zwischenstände laden, damit Zählertausch innerhalb der Periode korrekt berechnet wird
+    const between = await prisma.reading.findMany({
+        where: { date: { gt: fromReading.date, lt: toReading.date } },
+        orderBy: [{ date: 'asc' }, { id: 'asc' }]
+    })
+
+    const calc = calculatePeriodCost(fromReading, toReading, relevantPrice, between)
     if (!calc) {
-        return { success: false, error: 'Fehler bei der Berechnung.' }
+        return { success: false, error: 'Fehler bei der Berechnung (Zählerstände ungültig oder rückwärts laufend; bei Zählertausch Endstand des alten Zählers prüfen).' }
     }
 
     return {
@@ -402,16 +528,22 @@ export async function resetBillPeriodAction(billPeriodId) {
     if (!session) return { success: false, error: 'Nicht eingeloggt' }
 
     try {
-        // 1. Readings der Periode auf offen setzen
-        const updated = await prisma.reading.updateMany({
-            where: { billPeriodId: billPeriodId },
-            data: { billedAt: null, billPeriodId: null }
+        // Nur die neueste Abrechnung darf zurückgesetzt werden
+        const latest = await prisma.billPeriod.findFirst({
+            orderBy: [{ toDate: 'desc' }, { sentAt: 'desc' }]
         })
+        if (!latest || latest.id !== billPeriodId) {
+            return { success: false, error: 'Es kann nur die zuletzt erstellte Abrechnung zurückgesetzt werden.' }
+        }
 
-        // 2. Periode loeschen
-        await prisma.billPeriod.delete({
-            where: { id: billPeriodId }
-        })
+        // Readings auf offen setzen und Periode löschen – atomar
+        const [updated] = await prisma.$transaction([
+            prisma.reading.updateMany({
+                where: { billPeriodId: billPeriodId },
+                data: { billedAt: null, billPeriodId: null }
+            }),
+            prisma.billPeriod.delete({ where: { id: billPeriodId } })
+        ])
 
         revalidatePath('/')
         revalidatePath('/billing-history')
