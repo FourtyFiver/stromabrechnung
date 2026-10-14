@@ -45,7 +45,10 @@ export default function LoginForm({ ssoEnabled }) {
         })
 
         if (res.error) {
-            setError("Ungültige Zugangsdaten")
+            const m = /^RATE_LIMITED:(\d+)/.exec(res.error)
+            setError(m
+                ? `Zu viele Fehlversuche. Bitte in ${m[1]} ${m[1] === "1" ? "Minute" : "Minuten"} erneut versuchen.`
+                : "Ungültige Zugangsdaten")
             setLoading(false)
         } else {
             router.refresh()
