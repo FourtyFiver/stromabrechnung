@@ -28,7 +28,7 @@ export default function ResetPeriodButton({ billPeriodId, periodLabel }) {
         try {
             const result = await resetBillPeriodAction(billPeriodId)
             if (result.success) {
-                toast.success(`Zurückgesetzt — ${result.readingsReset} Zählerstand${result.readingsReset !== 1 ? 'ände' : ''} wieder offen. 🔄`)
+                toast.success(`Zurückgesetzt — ${result.readingsReset} ${result.readingsReset !== 1 ? 'Zählerstände' : 'Zählerstand'} wieder offen. 🔄`)
                 router.refresh()
             } else {
                 toast.error(result.error || 'Zurücksetzen fehlgeschlagen.')

@@ -27,6 +27,9 @@ export default function ReadingsForm({ reading = null, onDone = null }) {
     // das Formular nach einer Action zurück) und werden nur bei Erfolg geleert.
     const [values, setValues] = useState(initial)
     const [meterChange, setMeterChange] = useState(Boolean(reading?.meterChange))
+    // React 19 setzt das Formular nach jeder Action zurück: die Checkbox wird deshalb nach
+    // jeder Action neu gemountet und startet mit dem aktuellen State (sonst: Häkchen weg, State noch an).
+    const [formVersion, setFormVersion] = useState(0)
     const bind = (name) => ({ name, value: values[name], onChange: (e) => setValues((v) => ({ ...v, [name]: e.target.value })) })
 
     async function clientAction(formData) {
@@ -45,6 +48,8 @@ export default function ReadingsForm({ reading = null, onDone = null }) {
             }
         } catch (e) {
             toast.error('Ein unerwarteter Fehler ist aufgetreten.')
+        } finally {
+            setFormVersion((v) => v + 1)
         }
     }
 
@@ -64,7 +69,7 @@ export default function ReadingsForm({ reading = null, onDone = null }) {
             </div>
             <div className="input-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input type="checkbox" name="meterChange" checked={meterChange} onChange={(e) => setMeterChange(e.target.checked)} />
+                    <input key={formVersion} type="checkbox" name="meterChange" defaultChecked={meterChange} onChange={(e) => setMeterChange(e.target.checked)} />
                     Zählertausch
                 </label>
             </div>
