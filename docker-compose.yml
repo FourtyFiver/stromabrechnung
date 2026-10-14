@@ -12,4 +12,5 @@ services:
       - .env
     environment:
       - DATABASE_URL=file:/app/prisma/dev.db
+      - TZ=Europe/Berlin
     restart: always

@@ -50,17 +50,6 @@ export default function SendReportDialog({ open, onClose }) {
         }
     }, [open])
 
-    useEffect(() => {
-        if (open) {
-            loadPeriods()
-        } else {
-            // Dialog geschlossen: Simulation & Fehler zurücksetzen
-            setPreview(null)
-            setPreviewError('')
-            setPendingWhatsAppUrl(null)
-        }
-    }, [open])
-
     async function loadPeriods() {
         setLoading(true)
         setError('')
@@ -81,6 +70,17 @@ export default function SendReportDialog({ open, onClose }) {
         }
         setLoading(false)
     }
+
+    useEffect(() => {
+        if (open) {
+            loadPeriods()
+        } else {
+            // Dialog geschlossen: Simulation & Fehler zurücksetzen
+            setPreview(null)
+            setPreviewError('')
+            setPendingWhatsAppUrl(null)
+        }
+    }, [open])
 
     function getSelectedFromTo() {
         if (!periodsData) return null

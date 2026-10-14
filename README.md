@@ -15,11 +15,23 @@ Ein übersichtliches, webbasiertes Portal zur Verwaltung von Zählerständen und
 Der schnellste und empfohlene Weg, um die App zu starten (Docker & Docker Compose vorausgesetzt):
 
 ```bash
-git clone https://github.com/FourtyFiver/stromabrechnung.git && cd stromabrechnung
+git clone https://codeberg.vmhaus.de/armin/stromabrechnung.git && cd stromabrechnung   # primär: Codeberg (Forgejo)
+# Mirror (wird langfristig aufgegeben): https://github.com/FourtyFiver/stromabrechnung.git
 cp .env.example .env
 docker compose up -d
 ```
 *Die App ist danach unter `http://localhost:3000` erreichbar.*
+
+*Zeitzone:* Container laufen mit `TZ=Europe/Berlin` (im Image und in `docker-compose.yml` gesetzt); bei Bedarf in der Compose-Datei anpassen.
+
+## 🧪 Entwicklung
+
+```bash
+npm ci
+npm run lint   # ESLint (eslint.config.mjs)
+npm test       # node --test tests/*.test.mjs
+```
+Lint und Tests laufen in der CI vor dem Image-Build (GitHub Actions bzw. Forgejo Actions); beim Container-Start werden sie nie ausgeführt.
 
 *Alle Einstellungen zu Telegram- und WhatsApp-Versand werden komfortabel über die WebUI vorgenommen — die `.env` ist nur für Basis-Konfiguration und Secrets nötig.*
 
@@ -104,7 +116,8 @@ Anschließend `docker compose pull && docker compose up -d` (bzw. Neustart der A
 ## ❓ Troubleshooting & Hinweise
 
 - **Altes Verhalten nach App-Update?** iOS Safari hält alte JS-Bundles hart im Cache. Nach jedem `docker compose pull && docker compose up -d` Safari **komplett schließen** (App-Switcher, Safari wegswipen) und neu öffnen.
-- **Start-Login:** Die voreingestellten Zugangsdaten lauten `admin` / `admin123` (falls nicht in der `.env` überschrieben). Das `.env.example` zeigt die Sonder-Regularien für `ADMIN_PASSWORD` (keine Anführungszeichen, `$` muss als `$$` doppelt werden).
+- **Login:** Der Admin-Login über Umgebungsvariablen ist nur aktiv, wenn `ADMIN_PASSWORD` in der `.env` gesetzt ist (es gibt kein Default-Passwort). Hinweise dazu stehen in `.env.example` (keine Anführungszeichen, `$` als `$$` doppeln).
+- **Login-Rate-Limit hinter Reverse-Proxy:** Nach 5 Fehlversuchen wird je IP und je Benutzername 15 Minuten gesperrt. Die Client-IP wird nur dann aus `X-Forwarded-For` gelesen, wenn `TRUST_PROXY=1` gesetzt ist (nur aktivieren, wenn ein vertrauenswürdiger Proxy den Header setzt); sonst gilt `X-Real-IP` bzw. `unknown`.
 - **Dashboard leer?** Für die Verbrauchs- und Kostenberechnung werden immer mindestens **2 Zählerstände** benötigt.
 - **Fehlbuchung nach abgebrochenem Versand?** Abrechnungs-Historie öffnen → 🔄 Reset-Button der Periode drücken: Der BillPeriod-Eintrag wird gelöscht, die Zählerstände werden wieder als „offen" gesetzt und können neu abgerechnet werden.
 - **Test-Report, aber period wurde gebucht?** Tests buchen niemals — gebucht wird nur über die echten Sende-Buttons im Report-Dialog. Falls ein echter Versand statt eines Tests lief: Reset-Button (siehe oben).

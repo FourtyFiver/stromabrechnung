@@ -1,0 +1,58 @@
+# Forgejo Actions (Codeberg / codeberg.vmhaus.de).
+# Annahmen (nicht verifiziert, bitte an die eigene Instanz anpassen):
+#  - Es ist ein Runner mit dem Label `docker` registriert (Container-Runner, Docker-Socket
+#    verfuegbar, damit `docker build` / `docker push` funktioniert).
+#  - Actions-Referenzen wie `actions/checkout@v5` werden von der Instanz aufgeloest
+#    (Forgejo default: https://data.forgejo.org bzw. github.com je nach DEFAULT_ACTIONS_URL).
+#  - Die Registry der Instanz ist codeberg.vmhaus.de (Forgejo Container Registry).
+# Benoetigte Secrets (Repo -> Einstellungen -> Actions -> Secrets):
+#  - REGISTRY_USER   Forgejo-Benutzername (z. B. armin)
+#  - REGISTRY_TOKEN  Zugriffstoken mit Scope write:package
+name: Docker Build and Push
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: codeberg.vmhaus.de
+  IMAGE_NAME: codeberg.vmhaus.de/armin/stromabrechnung
+
+jobs:
+  test:
+    runs-on: docker
+    container:
+      image: node:24-alpine
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+  build:
+    # Kein Image-Push, wenn Lint/Tests fehlschlagen
+    needs: test
+    runs-on: docker
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Log in to the Forgejo registry
+        run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "$REGISTRY" -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+
+      - name: Build image
+        run: |
+          docker build \
+            -t "$IMAGE_NAME:latest" \
+            -t "$IMAGE_NAME:sha-$(echo "${{ github.sha }}" | cut -c1-7)" .
+
+      - name: Push image
+        run: docker push --all-tags "$IMAGE_NAME"

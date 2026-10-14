@@ -13,7 +13,7 @@ WORKDIR /app
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-RUN npm install
+RUN npm ci
 
 
 # Rebuild the source code only when needed
@@ -36,9 +36,17 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
+ENV TZ=Europe/Berlin
 # Uncomment the following line in case you want to disable telemetry during runtime.
 # ENV NEXT_TELEMETRY_DISABLED 1
+
+# tzdata fuer TZ, openssl fuer die Prisma-Engines.
+# Prisma CLI (devDependency, nicht im Next-standalone-Output) fest ins Image installieren,
+# damit start.sh `db push` ohne Netzwerk ausfuehren kann. Version = prisma in package.json.
+RUN apk add --no-cache tzdata openssl \
+    && mkdir -p /opt/prisma \
+    && npm install --prefix /opt/prisma --no-save --no-audit --no-fund prisma@6.19.2
 
 # Don't run as root
 RUN addgroup --system --gid 1001 nodejs
@@ -68,12 +76,15 @@ USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
+ENV PORT=3000
 # set hostname to localhost
-ENV HOSTNAME "0.0.0.0"
+ENV HOSTNAME=0.0.0.0
 
 COPY --chown=nextjs:nodejs start.sh ./
 RUN chmod +x start.sh
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:3000/login || exit 1
 
 # Start the app
 CMD ["./start.sh"]
