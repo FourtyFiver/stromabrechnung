@@ -46,7 +46,10 @@ ENV TZ=Europe/Berlin
 # damit start.sh `db push` ohne Netzwerk ausfuehren kann. Version = prisma in package.json.
 RUN apk add --no-cache tzdata openssl \
     && mkdir -p /opt/prisma \
-    && npm install --prefix /opt/prisma --no-save --no-audit --no-fund prisma@6.19.2
+    && npm install --prefix /opt/prisma --no-save --no-audit --no-fund prisma@6.19.2 \
+    # Engines jetzt (als root, mit Netz) laden: `prisma -v` zieht Query- und Schema-Engine fuer musl.
+    # Ohne das versucht die CLI beim Start nachzuladen und scheitert am Schreibschutz (Container-User != root).
+    && /opt/prisma/node_modules/.bin/prisma -v
 
 # Don't run as root
 RUN addgroup --system --gid 1001 nodejs
