@@ -114,6 +114,9 @@ async function getDashboardData() {
         lastPeriodCost,
         lastPeriodBaseFee,
         lastPeriodMonths,
+        lastPeriodFrom: latestBillPeriod?.fromDate ?? null,
+        lastPeriodTo: latestBillPeriod?.toDate ?? null,
+        lastPeriodSentAt: latestBillPeriod?.sentAt ?? null,
         openPeriodEstimate,
         totalHT,
         totalNT,
@@ -147,6 +150,12 @@ export default async function Home() {
                                         {data.lastPeriodCost.toFixed(2)} €
                                     </div>
                                     <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                        {data.lastPeriodSentAt && (
+                                            <span>Abgerechnet am: {new Date(data.lastPeriodSentAt).toLocaleDateString('de-DE')}</span>
+                                        )}
+                                        {data.lastPeriodFrom && data.lastPeriodTo && (
+                                            <span>Zeitraum: {new Date(data.lastPeriodFrom).toLocaleDateString('de-DE')} – {new Date(data.lastPeriodTo).toLocaleDateString('de-DE')}</span>
+                                        )}
                                         <span>Strom: {(data.lastPeriodCost - data.lastPeriodBaseFee).toFixed(2)} €</span>
                                         {data.lastPeriodBaseFee > 0 && (
                                             <span>Grundgebühr: {data.lastPeriodBaseFee.toFixed(2)} € ({data.lastPeriodMonths} Mon.)</span>
